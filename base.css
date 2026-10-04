@@ -1,0 +1,91 @@
+/* ==========================================================================
+   BASE — reset, typography, focus rings, utility classes.
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-h) + 12px);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+img, svg { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+a { color: var(--primary); text-decoration: none; }
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-tertiary);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+mark { background: color-mix(in srgb, var(--warning) 30%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+::selection { background: color-mix(in srgb, var(--primary-solid) 24%, transparent); }
+
+/* Khmer script reads better a little larger and taller */
+:lang(km) body, html:lang(km) { line-height: 1.7; }
+
+/* Visible focus for keyboard users only */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+
+/* Numbers that line up */
+.tabular, [data-count] { font-variant-numeric: tabular-nums; }
+
+/* ---------- Utilities ---------- */
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: fixed; left: 12px; top: -60px; z-index: 100;
+  background: var(--primary-solid); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm);
+  transition: top var(--dur) var(--ease-out);
+}
+.skip-link:focus { top: 12px; }
+
+[hidden] { display: none !important; }
+body.modal-open { overflow: hidden; }
+
+/* Scrollbars that match the theme */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+
+/* Boot error (shown only if the app fails to start) */
+.boot-error { max-width: 480px; margin: 15vh auto; padding: 24px; text-align: center; }
+.boot-error button { margin-top: 16px; padding: 10px 16px; border-radius: 10px; background: var(--primary-solid); color: #fff; }
+
+/* Smooth theme switch (class added briefly by js/core/theme.js) */
+.theme-transition, .theme-transition *, .theme-transition *::before, .theme-transition *::after {
+  transition: background-color 300ms var(--ease-out), border-color 300ms var(--ease-out), color 300ms var(--ease-out), fill 300ms, stroke 300ms !important;
+}

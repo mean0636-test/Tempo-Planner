@@ -1,0 +1,159 @@
+/* ==========================================================================
+   DESIGN TOKENS — change the look of the whole app from this one file.
+   Layout idea: a quiet indigo-tinted ground, white cards that lift on hover,
+   and one bold gradient (the Today's Progress card) per screen.
+
+   Light values are on :root. Dark values are repeated twice below:
+   once for "System" mode (media query) and once for the manual Dark toggle.
+   ========================================================================== */
+
+:root {
+  /* ---------- Brand (Settings → Accent swaps --primary-solid / --brand-2) ---------- */
+  --primary-solid: #4F46E5;        /* indigo */
+  --brand-2: #7C3AED;              /* violet partner for gradients */
+  --accent: #06B6D4;               /* cyan highlight */
+
+  /* ---------- Semantic ---------- */
+  --success: #059669;
+  --warning: #D97706;
+  --orange: #EA580C;
+  --danger: #DC2626;
+  --info: #2563EB;
+
+  /* ---------- Neutrals (slightly indigo-biased greys) ---------- */
+  --background: #F3F4F9;
+  --surface: #FFFFFF;
+  --surface-2: #F6F7FB;            /* subtle fills: inputs, tracks */
+  --surface-3: #ECEEF6;            /* hover fills */
+  --surface-elevated: #FFFFFF;     /* modals, menus */
+  --border: #E3E5EF;
+  --border-strong: #CDD1E0;
+  --text-primary: #151826;
+  --text-secondary: #555B73;
+  --text-tertiary: #80869E;
+  --glass: rgb(255 255 255 / 0.72);
+  --overlay: rgb(17 20 39 / 0.38);
+  --toast-action: #A5B4FC;         /* Undo/View link inside dark toasts */
+
+  /* ---------- Category & chart colours (used as --c-indigo, --c-rose...) ---------- */
+  --c-indigo: #6366F1; --c-violet: #8B5CF6; --c-blue: #3B82F6; --c-cyan: #06B6D4; --c-emerald: #10B981;
+  --c-amber: #F59E0B; --c-orange: #F97316; --c-rose: #F43F5E; --c-pink: #EC4899; --c-slate: #64748B;
+
+  /* ---------- Note colours (card tint, border) ---------- */
+  --note-neutral: var(--surface);
+  --note-blue: #EEF4FF;   --note-blue-line: #CFE0FF;
+  --note-purple: #F4F0FF; --note-purple-line: #E0D5FF;
+  --note-green: #ECFAF3;  --note-green-line: #C9EEDB;
+  --note-orange: #FFF5EB; --note-orange-line: #FBDDBF;
+  --note-pink: #FFF0F6;   --note-pink-line: #FBD0E2;
+
+  /* ---------- Shadows (tinted, never pure black) ---------- */
+  --shadow-xs: 0 1px 2px rgb(30 34 80 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(30 34 80 / 0.05), 0 2px 8px rgb(30 34 80 / 0.05);
+  --shadow-md: 0 2px 4px rgb(30 34 80 / 0.05), 0 8px 24px rgb(30 34 80 / 0.08);
+  --shadow-lg: 0 12px 40px rgb(30 34 80 / 0.16), 0 2px 8px rgb(30 34 80 / 0.06);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--primary-solid) 28%, transparent);
+
+  /* ---------- Shape ---------- */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+
+  /* ---------- Spacing scale ---------- */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-7: 32px; --space-8: 40px;
+
+  /* ---------- Type ---------- */
+  --font-display: 'Bricolage Grotesque', 'Kantumruy Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Figtree', 'Kantumruy Pro', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --text-xs: 0.75rem;   /* 12 */
+  --text-sm: 0.8125rem; /* 13 */
+  --text-base: 0.9375rem; /* 15 */
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-display: 3.5rem;
+
+  /* ---------- Motion ---------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur: 220ms;
+  --dur-slow: 320ms;
+
+  /* ---------- Layout ---------- */
+  --sidebar-w: 256px;
+  --sidebar-w-collapsed: 76px;
+  --header-h: 68px;
+  --bottomnav-h: 66px;
+  --content-max: 1280px;
+
+  /* ---------- Derived from the brand colour (no need to edit) ---------- */
+  --primary: var(--primary-solid);
+  --primary-light: color-mix(in srgb, var(--primary-solid) 10%, var(--surface));
+  --primary-soft: color-mix(in srgb, var(--primary-solid) 16%, var(--surface));
+  --primary-dark: color-mix(in srgb, var(--primary-solid) 72%, #0B0F19);
+  --primary-contrast: #FFFFFF;
+  --gradient-brand: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-solid) 52%, var(--brand-2) 100%);
+  --success-soft: color-mix(in srgb, var(--success) 12%, var(--surface));
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  --danger-soft: color-mix(in srgb, var(--danger) 11%, var(--surface));
+  --info-soft: color-mix(in srgb, var(--info) 11%, var(--surface));
+
+  color-scheme: light;
+}
+
+/* ---------- Accent choices (Settings → Appearance) ---------- */
+:root[data-accent="violet"]  { --primary-solid: #7C3AED; --brand-2: #C026D3; }
+:root[data-accent="blue"]    { --primary-solid: #2563EB; --brand-2: #0891B2; }
+:root[data-accent="emerald"] { --primary-solid: #059669; --brand-2: #0D9488; }
+:root[data-accent="rose"]    { --primary-solid: #E11D48; --brand-2: #DB2777; }
+
+/* ---------- Dark theme: System mode ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --success: #34D399; --warning: #FBBF24; --orange: #FB923C; --danger: #F87171; --info: #60A5FA;
+    --background: #0B0F19; --surface: #111827; --surface-2: #151D2E; --surface-3: #1C2539; --surface-elevated: #182033;
+    --border: #222C42; --border-strong: #2F3A54;
+    --text-primary: #E9EBF4; --text-secondary: #A5ACC4; --text-tertiary: #737C97;
+    --glass: rgb(17 24 39 / 0.72); --overlay: rgb(3 6 14 / 0.6); --toast-action: var(--primary-solid);
+    --note-blue: #142139; --note-blue-line: #22355A; --note-purple: #1B1837; --note-purple-line: #2E2856;
+    --note-green: #10241F; --note-green-line: #1C3D33; --note-orange: #261B12; --note-orange-line: #44301D;
+    --note-pink: #261523; --note-pink-line: #44223B;
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.2);
+    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 10px 28px rgb(0 0 0 / 0.32);
+    --shadow-lg: 0 16px 48px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.3);
+    --primary: color-mix(in srgb, var(--primary-solid) 52%, #FFFFFF);
+    --primary-light: color-mix(in srgb, var(--primary-solid) 18%, var(--surface));
+    --primary-soft: color-mix(in srgb, var(--primary-solid) 26%, var(--surface));
+    color-scheme: dark;
+  }
+}
+
+/* ---------- Dark theme: manual toggle (same values) ---------- */
+:root[data-theme="dark"] {
+  --success: #34D399; --warning: #FBBF24; --orange: #FB923C; --danger: #F87171; --info: #60A5FA;
+  --background: #0B0F19; --surface: #111827; --surface-2: #151D2E; --surface-3: #1C2539; --surface-elevated: #182033;
+  --border: #222C42; --border-strong: #2F3A54;
+  --text-primary: #E9EBF4; --text-secondary: #A5ACC4; --text-tertiary: #737C97;
+  --glass: rgb(17 24 39 / 0.72); --overlay: rgb(3 6 14 / 0.6); --toast-action: var(--primary-solid);
+  --note-blue: #142139; --note-blue-line: #22355A; --note-purple: #1B1837; --note-purple-line: #2E2856;
+  --note-green: #10241F; --note-green-line: #1C3D33; --note-orange: #261B12; --note-orange-line: #44301D;
+  --note-pink: #261523; --note-pink-line: #44223B;
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.3), 0 10px 28px rgb(0 0 0 / 0.32);
+  --shadow-lg: 0 16px 48px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.3);
+  --primary: color-mix(in srgb, var(--primary-solid) 52%, #FFFFFF);
+  --primary-light: color-mix(in srgb, var(--primary-solid) 18%, var(--surface));
+  --primary-soft: color-mix(in srgb, var(--primary-solid) 26%, var(--surface));
+  color-scheme: dark;
+}

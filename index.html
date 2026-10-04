@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tempo Daily Planner</title>
+  <meta name="description" content="Notes and daily tasks in one calm, fast planner.">
+  <meta name="theme-color" content="#F3F4F9">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Fonts: Bricolage Grotesque (headings), Figtree (text), JetBrains Mono (numbers), Kantumruy Pro (Khmer) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..700&family=JetBrains+Mono:wght@500;600&family=Kantumruy+Pro:wght@400..600&display=swap">
+
+  <!-- Styles, in order: design tokens → base → layout → components → pages → animations -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/animations.css">
+
+  <!-- Apply the saved theme before first paint, so there's no light flash in dark mode -->
+  <script>
+    try {
+      var s = JSON.parse(localStorage.getItem('tempo:data:v1') || 'null');
+      var st = s && s.settings;
+      if (st && st.theme && st.theme !== 'system') document.documentElement.setAttribute('data-theme', st.theme);
+      if (st && st.accent) document.documentElement.setAttribute('data-accent', st.accent);
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- The app draws itself here (js/main.js). Until then, this skeleton shows. -->
+  <div id="app">
+    <div class="boot" aria-busy="true" aria-label="Loading Tempo">
+      <div class="boot__side"><div class="skeleton" style="width:60%;height:22px"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:70%"></div></div>
+      <div class="boot__main">
+        <div class="skeleton" style="width:30%;height:28px"></div>
+        <div class="skeleton" style="width:45%"></div>
+        <div class="boot__row"><div class="skeleton skeleton--block"></div><div class="skeleton skeleton--block"></div></div>
+        <div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:65%"></div><div class="skeleton" style="width:72%"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
