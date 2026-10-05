@@ -7,6 +7,14 @@
   <meta name="description" content="Notes and daily tasks in one calm, fast planner.">
   <meta name="theme-color" content="#F3F4F9">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <!-- iPhone / iPad: home-screen icon and full-screen app mode -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tempo">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
   <!-- Fonts: Bricolage Grotesque (headings), Figtree (text), JetBrains Mono (numbers), Kantumruy Pro (Khmer) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1221,6 +1229,18 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 /* Hide toasts while the quick-add menu is open so they don't cover it */
 body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: none; }
 
+/* ============================== Profile photo & install ============================== */
+.avatar--photo { object-fit: cover; padding: 0; background: var(--surface-3); display: block; }
+.photo-picker { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.photo-picker__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.photo-picker label.btn { cursor: pointer; position: relative; }
+.photo-picker label.btn:focus-within { box-shadow: var(--ring); }
+.status-pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; font-size: var(--text-sm); font-weight: 650; color: var(--success); background: var(--success-soft); }
+.install-help { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 8px; }
+.install-help__icon { border-radius: 16px; box-shadow: var(--shadow-md); }
+.install-help ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; color: var(--text-secondary); }
+.install-btn { color: var(--primary); }
+
 /* ==========================================================================
    PAGES — layouts specific to each screen.
    Dashboard → js/pages/dashboard.js   Tasks → js/pages/tasks.js
@@ -1942,7 +1962,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     const now2 = nowIso();
     return {
       meta: { schemaVersion: SCHEMA_VERSION, createdAt: now2, updatedAt: now2, sample: false },
-      profile: { name: "" },
+      profile: { name: "", photo: "" },
       settings: defaultSettings(),
       tasks: [],
       notes: [],
@@ -1976,6 +1996,30 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 
   // js/core/i18n.js
   var en = {
+    "common.ok": "Got it",
+    "settings.photoAdd": "Add photo",
+    "settings.photoChange": "Change photo",
+    "settings.photoRemove": "Remove",
+    "toast.photoSaved": "Profile photo updated",
+    "toast.photoRemoved": "Profile photo removed",
+    "toast.photoBad": "That file is not an image. Choose a JPG or PNG.",
+    "toast.sampleRemoved": "Example tasks and notes were removed. Your own items were kept.",
+    "settings.app": "Install app",
+    "settings.appDesc": "Open Tempo from your home screen or dock, even offline.",
+    "install.title": "Install Tempo",
+    "install.button": "Install app",
+    "install.how": "Show me how",
+    "install.installed": "Installed",
+    "install.done": "Tempo is installed. Find it on your home screen or in your apps.",
+    "install.status.installed": "You are using the installed app.",
+    "install.status.available": "Install it like a normal app. It opens in its own window.",
+    "install.status.ios": "On iPhone and iPad, add it from the Safari share menu.",
+    "install.status.manual": "Use your browser menu to install it.",
+    "install.ios1": "Open this page in Safari.",
+    "install.ios2": "Tap the Share button (square with an arrow).",
+    "install.ios3": 'Choose "Add to Home Screen", then tap Add.',
+    "install.manual1": 'Chrome or Edge: open the \u22EE menu \u2192 "Cast, save and share" \u2192 "Install page as app" (or click the install icon at the right of the address bar).',
+    "install.manual2": 'Android Chrome: \u22EE menu \u2192 "Add to Home screen" \u2192 Install.',
     "a11y.skip": "Skip to content",
     "a11y.mainNav": "Main navigation",
     "a11y.openMenu": "Open menu",
@@ -2378,6 +2422,30 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     "error.reload": "Reload"
   };
   var km = {
+    "common.ok": "\u1799\u179B\u17CB\u17A0\u17BE\u1799",
+    "settings.photoAdd": "\u1794\u1793\u17D2\u1790\u17C2\u1798\u179A\u17BC\u1794\u1790\u178F",
+    "settings.photoChange": "\u1794\u17D2\u178F\u17BC\u179A\u179A\u17BC\u1794\u1790\u178F",
+    "settings.photoRemove": "\u179B\u17BB\u1794",
+    "toast.photoSaved": "\u1794\u17B6\u1793\u1794\u17D2\u178F\u17BC\u179A\u179A\u17BC\u1794\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7\u179A\u17BC\u1794",
+    "toast.photoRemoved": "\u1794\u17B6\u1793\u179B\u17BB\u1794\u179A\u17BC\u1794\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7\u179A\u17BC\u1794",
+    "toast.photoBad": "\u17AF\u1780\u179F\u17B6\u179A\u1793\u17C1\u17C7\u1798\u17B7\u1793\u1798\u17C2\u1793\u1787\u17B6\u179A\u17BC\u1794\u1797\u17B6\u1796\u1791\u17C1\u17D4 \u179F\u17BC\u1798\u1787\u17D2\u179A\u17BE\u179F JPG \u17AC PNG\u17D4",
+    "toast.sampleRemoved": "\u1794\u17B6\u1793\u179B\u17BB\u1794\u1797\u17B6\u179A\u1780\u17B7\u1785\u17D2\u1785 \u1793\u17B7\u1784\u1780\u17C6\u178E\u178F\u17CB\u178F\u17D2\u179A\u17B6\u1782\u17C6\u179A\u17BC\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1793\u17C5\u178A\u178A\u17C2\u179B\u17D4",
+    "settings.app": "\u178A\u17C6\u17A1\u17BE\u1784\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8",
+    "settings.appDesc": "\u1794\u17BE\u1780 Tempo \u1796\u17B8\u17A2\u17C1\u1780\u17D2\u179A\u1784\u17CB\u178A\u17BE\u1798 \u17AC Dock \u1794\u17B6\u1793 \u1791\u17C4\u17C7\u1782\u17D2\u1798\u17B6\u1793\u17A2\u17CA\u17B8\u1793\u1792\u17BA\u178E\u17B7\u178F\u1780\u17CF\u178A\u17C4\u1799\u17D4",
+    "install.title": "\u178A\u17C6\u17A1\u17BE\u1784 Tempo",
+    "install.button": "\u178A\u17C6\u17A1\u17BE\u1784\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8",
+    "install.how": "\u1794\u1784\u17D2\u17A0\u17B6\u1789\u179A\u1794\u17C0\u1794",
+    "install.installed": "\u1794\u17B6\u1793\u178A\u17C6\u17A1\u17BE\u1784\u179A\u17BD\u1785",
+    "install.done": "\u1794\u17B6\u1793\u178A\u17C6\u17A1\u17BE\u1784 Tempo \u179A\u17BD\u1785\u17A0\u17BE\u1799\u17D4 \u179A\u1780\u179C\u17B6\u1783\u17BE\u1789\u1793\u17C5\u17A2\u17C1\u1780\u17D2\u179A\u1784\u17CB\u178A\u17BE\u1798 \u17AC\u1780\u17D2\u1793\u17BB\u1784\u1794\u1789\u17D2\u1787\u17B8\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8\u17D4",
+    "install.status.installed": "\u17A2\u17D2\u1793\u1780\u1780\u17C6\u1796\u17BB\u1784\u1794\u17D2\u179A\u17BE\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8\u178A\u17C2\u179B\u1794\u17B6\u1793\u178A\u17C6\u17A1\u17BE\u1784\u17D4",
+    "install.status.available": "\u178A\u17C6\u17A1\u17BE\u1784\u178A\u17BC\u1785\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8\u1792\u1798\u17D2\u1798\u178F\u17B6\u17D4 \u179C\u17B6\u1794\u17BE\u1780\u1780\u17D2\u1793\u17BB\u1784\u1795\u17D2\u1791\u17B6\u17C6\u1784\u178A\u17B6\u1785\u17CB\u178A\u17C4\u1799\u17A1\u17C2\u1780\u17D4",
+    "install.status.ios": "\u1793\u17C5\u179B\u17BE iPhone \u1793\u17B7\u1784 iPad \u179F\u17BC\u1798\u1794\u1793\u17D2\u1790\u17C2\u1798\u1796\u17B8\u1798\u17C9\u17BA\u1793\u17BB\u1799 Share \u179A\u1794\u179F\u17CB Safari\u17D4",
+    "install.status.manual": "\u179F\u17BC\u1798\u1794\u17D2\u179A\u17BE\u1798\u17C9\u17BA\u1793\u17BB\u1799\u179A\u1794\u179F\u17CB browser \u178A\u17BE\u1798\u17D2\u1794\u17B8\u178A\u17C6\u17A1\u17BE\u1784\u17D4",
+    "install.ios1": "\u1794\u17BE\u1780\u1791\u17C6\u1796\u17D0\u179A\u1793\u17C1\u17C7\u1780\u17D2\u1793\u17BB\u1784 Safari\u17D4",
+    "install.ios2": "\u1785\u17BB\u1785\u1794\u17CA\u17BC\u178F\u17BB\u1784 Share (\u1780\u17B6\u179A\u17C9\u17C1\u1798\u17B6\u1793\u1796\u17D2\u179A\u17BD\u1789)\u17D4",
+    "install.ios3": '\u1787\u17D2\u179A\u17BE\u179F "Add to Home Screen" \u179A\u17BD\u1785\u1785\u17BB\u1785 Add\u17D4',
+    "install.manual1": 'Chrome \u17AC Edge\u17D6 \u1794\u17BE\u1780\u1798\u17C9\u17BA\u1793\u17BB\u1799 \u22EE \u2192 "Cast, save and share" \u2192 "Install page as app" (\u17AC\u1785\u17BB\u1785\u179A\u17BC\u1794\u178A\u17C6\u17A1\u17BE\u1784\u1793\u17C5\u1781\u17B6\u1784\u179F\u17D2\u178F\u17B6\u17C6\u179A\u1794\u17B6\u179A\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793)\u17D4',
+    "install.manual2": 'Android Chrome\u17D6 \u1798\u17C9\u17BA\u1793\u17BB\u1799 \u22EE \u2192 "Add to Home screen" \u2192 Install\u17D4',
     "a11y.skip": "\u179A\u17C6\u179B\u1784\u1791\u17C5\u1798\u17B6\u178F\u17B7\u1780\u17B6",
     "a11y.mainNav": "\u1798\u17C9\u17BA\u1793\u17BB\u1799\u1798\u17C1",
     "a11y.openMenu": "\u1794\u17BE\u1780\u1798\u17C9\u17BA\u1793\u17BB\u1799",
@@ -2707,7 +2775,6 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
   function buildSampleState() {
     const state2 = createEmptyState();
     state2.meta.sample = true;
-    state2.profile.name = "Sok Mean";
     const [study, work, personal, finance, health, shopping, ideas] = state2.categories.map((c) => c.id);
     const today = todayKey();
     const d = (n) => addDays(today, n);
@@ -2866,19 +2933,34 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
   var errorListeners = /* @__PURE__ */ new Set();
   var saveTimer = null;
   var lastSaveOk = true;
+  var removedSample = false;
+  var sampleWasRemoved = () => removedSample;
+  function removeAutoSampleData(s) {
+    const cutoff = new Date(s.meta.createdAt).getTime() + 6e4;
+    const isMine = (item) => new Date(item.createdAt).getTime() > cutoff;
+    s.tasks = s.tasks.filter(isMine);
+    s.notes = s.notes.filter(isMine);
+    const taskIds = new Set(s.tasks.map((x) => x.id));
+    s.reminders = s.reminders.filter((r) => r.taskId ? taskIds.has(r.taskId) : isMine(r));
+    s.meta.sample = false;
+  }
   var nowIso2 = () => (/* @__PURE__ */ new Date()).toISOString();
   var byId = (list, id) => list.find((x) => x.id === id);
   async function initStore() {
     let raw = null;
     try {
       raw = await storage.load();
-      state = raw ? migrate(raw) : buildSampleState();
+      state = raw ? migrate(raw) : createEmptyState();
     } catch (err) {
       console.error("[store] saved data was unreadable, trying backup", err);
       const backup = await storage.loadBackup().catch(() => null);
-      state = backup?.data ? migrate(backup.data) : buildSampleState();
+      state = backup?.data ? migrate(backup.data) : createEmptyState();
     }
-    if (!raw) persistNow();
+    if (state.meta.sample && !state.meta.sampleLoadedByUser) {
+      removeAutoSampleData(state);
+      removedSample = true;
+    }
+    if (!raw || removedSample) persistNow();
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", () => document.hidden && flush());
     return state;
@@ -3153,6 +3235,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       await storage.backup(state).catch(() => {
       });
       const sample = buildSampleState();
+      sample.meta.sampleLoadedByUser = true;
       sample.profile = { ...state.profile };
       sample.settings = { ...state.settings };
       commit((s) => Object.assign(s, sample));
@@ -3599,9 +3682,10 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     ${actionLabel ? button({ label: actionLabel, icon: "plus", action, attrs, size: "sm" }) : ""}
   </div>`;
   }
-  function avatar(name = "", size = 34) {
-    const initials = (name.trim() || "You").split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
-    return `<span class="avatar" style="--size:${size}px" aria-hidden="true">${esc(initials)}</span>`;
+  function avatar(name = "", size = 34, photo = "") {
+    if (photo) return `<img class="avatar avatar--photo" style="--size:${size}px" src="${esc(photo)}" alt="" width="${size}" height="${size}">`;
+    const initials = (name.trim() || "").split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+    return `<span class="avatar" style="--size:${size}px" aria-hidden="true">${initials ? esc(initials) : icon("user", { size: Math.round(size * 0.5) })}</span>`;
   }
   function sectionHeader(title8, { count, actionLabel, action, attrs = "", ic } = {}) {
     return `<div class="section-head">
@@ -4672,6 +4756,66 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     navigate("tasks");
   }
 
+  // js/features/install.js
+  var deferredPrompt = null;
+  var listeners4 = /* @__PURE__ */ new Set();
+  var notify = () => listeners4.forEach((fn) => fn());
+  var onInstallChange = (fn) => listeners4.add(fn);
+  function isInstalled() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+  var isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  function installStatus() {
+    if (isInstalled()) return "installed";
+    if (deferredPrompt) return "available";
+    if (isIOS()) return "ios";
+    return "manual";
+  }
+  async function promptInstall() {
+    if (!deferredPrompt) return "unavailable";
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    notify();
+    return outcome;
+  }
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    notify();
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    notify();
+  });
+  function installHelp() {
+    const ios = installStatus() === "ios";
+    const steps = ios ? ["install.ios1", "install.ios2", "install.ios3"] : ["install.manual1", "install.manual2"];
+    openModal({
+      title: t("install.title"),
+      size: "sm",
+      body: `<div class="install-help">
+      <img src="apple-touch-icon.png" alt="" width="64" height="64" class="install-help__icon">
+      <ol>${steps.map((k) => `<li>${esc(t(k))}</li>`).join("")}</ol>
+    </div>`,
+      footer: `<span class="modal__foot-spacer"></span><button type="button" class="btn btn--primary btn--md" data-close>${esc(t("common.ok"))}</button>`
+    });
+  }
+  async function installApp() {
+    const status = installStatus();
+    if (status === "installed") {
+      toast(t("install.installed"), { icon: "check" });
+      return;
+    }
+    if (status !== "available") {
+      installHelp();
+      return;
+    }
+    const outcome = await promptInstall();
+    if (outcome === "accepted") toast(t("install.done"), { icon: "check", type: "success" });
+  }
+  registerActions({ "install-app": () => installApp() });
+
   // js/layout/shell.js
   var NAV = [
     { route: "dashboard", icon: "home", key: "nav.dashboard" },
@@ -4706,6 +4850,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
           ${icon("search", { size: 17 })}<span class="search-trigger__text">${esc(t("search.trigger"))}</span><kbd class="search-trigger__kbd" id="search-kbd">Ctrl K</kbd>
         </button>
         <div class="topbar__actions">
+          <button type="button" class="icon-btn install-btn" id="install-btn" data-action="install-app" hidden aria-label="${esc(t("install.button"))}" title="${esc(t("install.button"))}">${icon("download")}</button>
           <button type="button" class="icon-btn topbar__search-mobile" data-action="open-search" aria-label="${esc(t("search.title"))}">${icon("search")}</button>
           <button type="button" class="icon-btn has-badge" id="bell-btn" data-action="open-notifications" aria-haspopup="true" aria-expanded="false" aria-label="${esc(t("notifications.title"))}">${icon("bell")}<span class="dot-badge" hidden></span></button>
           <button type="button" class="icon-btn" id="theme-btn" data-action="toggle-theme" aria-label="${esc(t("settings.theme"))}"></button>
@@ -4759,7 +4904,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     const theme = resolvedTheme(state2.settings.theme);
     document.getElementById("theme-btn").innerHTML = icon(theme === "dark" ? "sun" : "moon");
     document.getElementById("theme-btn").setAttribute("aria-label", theme === "dark" ? t("theme.switchLight") : t("theme.switchDark"));
-    document.getElementById("avatar-btn").innerHTML = avatar(state2.profile.name, 34);
+    document.getElementById("avatar-btn").innerHTML = avatar(state2.profile.name, 34, state2.profile.photo);
+    document.getElementById("install-btn").hidden = installStatus() !== "available";
     const unseen = state2.reminders.filter((r) => r.fired && !r.seen).length;
     document.querySelector("#bell-btn .dot-badge").hidden = !unseen;
   }
@@ -4834,7 +4980,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
             actions.updateSettings({ theme: "system" });
           } },
           "divider",
-          { label: t("search.title"), icon: "search", hint: "Ctrl K", onClick: () => document.querySelector(".search-trigger")?.click() }
+          { label: t("search.title"), icon: "search", hint: "Ctrl K", onClick: () => document.querySelector(".search-trigger")?.click() },
+          ...installStatus() === "installed" ? [] : [{ label: t("install.button"), icon: "download", onClick: () => installApp() }]
         ]
       });
     },
@@ -5696,6 +5843,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       ["settings-notifications", "bell", "settings.notifications"],
       ["settings-tasks", "tasks", "settings.taskDefaults"],
       ["settings-language", "globe", "settings.language"],
+      ["settings-app", "download", "settings.app"],
       ["settings-data", "database", "settings.data"]
     ].map(([id, ic, key]) => `<a href="#settings" data-action="settings-jump" data-target="${id}" class="settings-nav__item">${icon(ic, { size: 16 })}${esc(t(key))}</a>`).join("")}
     </nav>
@@ -5703,7 +5851,14 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     <div class="settings-main">
       ${section("settings-profile", "user", t("settings.profile"), t("settings.profileDesc"), `
         <div class="profile-row">
-          ${avatar(state2.profile.name, 56)}
+          <div class="photo-picker">
+            ${avatar(state2.profile.name, 72, state2.profile.photo)}
+            <div class="photo-picker__actions">
+              <label class="btn btn--secondary btn--sm" for="photo-file">${icon("upload", { size: 15 })}<span>${esc(state2.profile.photo ? t("settings.photoChange") : t("settings.photoAdd"))}</span>
+                <input type="file" id="photo-file" accept="image/*" class="sr-only" data-change="photo-file"></label>
+              ${state2.profile.photo ? `<button type="button" class="btn btn--ghost btn--sm btn--danger-text" data-action="photo-remove">${icon("trash", { size: 15 })}<span>${esc(t("settings.photoRemove"))}</span></button>` : ""}
+            </div>
+          </div>
           <div class="field profile-row__field">
             <label class="field__label" for="profile-name">${esc(t("settings.displayName"))}</label>
             <input class="input" id="profile-name" type="text" maxlength="40" value="${esc(state2.profile.name)}" placeholder="${esc(t("settings.namePlaceholder"))}" data-input="profile-name" autocomplete="name">
@@ -5760,6 +5915,11 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       options: [{ value: "en", label: "English" }, { value: "km", label: "\u1781\u17D2\u1798\u17C2\u179A" }]
     }))}
       `)}
+
+      ${section("settings-app", "download", t("settings.app"), t("settings.appDesc"), (() => {
+      const st = installStatus();
+      return row(t("install.title"), t(`install.status.${st}`), st === "installed" ? `<span class="status-pill">${icon("check", { size: 15 })}${esc(t("install.installed"))}</span>` : `<button type="button" class="btn btn--primary btn--md" data-action="install-app">${icon("download", { size: 16 })}<span>${esc(st === "available" ? t("install.button") : t("install.how"))}</span></button>`);
+    })())}
 
       ${section("settings-data", "database", t("settings.data"), t("settings.dataDesc"), `
         <div class="storage-status ${isPersistent() ? "is-ok" : "is-warn"}">
@@ -5941,6 +6101,49 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     }
   });
   registerInput({ "profile-name": (el2) => saveName(el2.value) });
+  function resizePhoto(file, size = 256) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("bad image"));
+      };
+      img.src = url;
+    });
+  }
+  registerChange({
+    "photo-file": async (el2) => {
+      const file = el2.files?.[0];
+      el2.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast(t("toast.photoBad"), { icon: "alert", type: "error" });
+        return;
+      }
+      try {
+        actions.updateProfile({ photo: await resizePhoto(file) });
+        toast(t("toast.photoSaved"), { icon: "user", type: "success" });
+      } catch {
+        toast(t("toast.photoBad"), { icon: "alert", type: "error" });
+      }
+    }
+  });
+  registerActions({
+    "photo-remove": () => {
+      actions.updateProfile({ photo: "" });
+      toast(t("toast.photoRemoved"), { icon: "trash" });
+    }
+  });
 
   // js/pages/index.js
   var pages = { dashboard: dashboard_exports, tasks: tasks_exports, notes: notes_exports, calendar: calendar_exports, analytics: analytics_exports, categories: categories_exports, settings: settings_exports };
@@ -6256,6 +6459,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       requestRender();
     });
     watchSystemTheme(requestRender);
+    onInstallChange(requestRender);
+    if (sampleWasRemoved()) setTimeout(() => toast(t("toast.sampleRemoved"), { icon: "sparkle", duration: 6e3 }), 600);
     onSaveError(() => toast(t("toast.saveFailed"), { icon: "alert", type: "error", duration: 8e3 }));
     initSwipe();
     initSearchShortcuts();
