@@ -4,6 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Tempo Daily Planner</title>
+
+  <!-- ☁️ CLOUD ACCOUNTS (optional)
+       Put your Supabase project here so every visitor can create an account and sync.
+       Leave the values empty to keep the app local-only (each user can still set up their own project in Settings).
+       The publishable / anon key is safe to publish; never put the secret (service_role) key here. -->
+  <script>
+    window.TEMPO_CLOUD = {
+      url: 'https://nanqarhajxoiyxhfadrg.supabase.co',   // e.g. 'https://abcdefghijkl.supabase.co'
+      key: 'sb_publishable_nuKyGTRX8j0vDo0alSYlOg_2dzy0I9U',   // e.g. 'sb_publishable_...'  (or the long anon public key 'eyJ...')
+    };
+  </script>
+
   <meta name="description" content="Notes and daily tasks in one calm, fast planner.">
   <meta name="theme-color" content="#F3F4F9">
   <link rel="manifest" href="manifest.webmanifest">
@@ -1276,6 +1288,30 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 .auth-tabs .segmented__opt > span { justify-content: center; width: 100%; }
 .auth-note { padding: 12px; border-radius: var(--radius-sm); background: var(--info-soft); color: var(--text-primary); font-size: var(--text-sm); }
 
+/* ============================== Accounts: welcome, choices ============================== */
+.sync-card__lead { color: var(--text-secondary); }
+.auth-forgot { align-self: flex-start; margin-top: -8px; }
+.auth-guest { display: flex; gap: 8px; align-items: flex-start; font-size: var(--text-xs); color: var(--text-tertiary); }
+.auth-guest .icon { flex: none; margin-top: 1px; }
+.choice-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.choice {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 14px; text-align: left;
+  border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); color: var(--primary);
+  transition: border-color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+}
+.choice:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
+.choice .icon { flex: none; margin-top: 2px; }
+.choice span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.choice strong { color: var(--text-primary); font-size: var(--text-sm); }
+.choice small { color: var(--text-tertiary); font-size: var(--text-xs); }
+.choice--primary { border-color: color-mix(in srgb, var(--primary-solid) 40%, var(--border)); background: var(--primary-light); }
+.choice--danger { color: var(--danger); }
+.choice--danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-soft); }
+.welcome { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 12px 0 4px; }
+.welcome__icon { border-radius: 18px; box-shadow: var(--shadow-md); }
+.welcome__title { font-size: var(--text-xl); }
+.welcome__text { color: var(--text-secondary); max-width: 34ch; margin-bottom: 6px; }
+
 /* ==========================================================================
    PAGES — layouts specific to each screen.
    Dashboard → js/pages/dashboard.js   Tasks → js/pages/tasks.js
@@ -1835,6 +1871,11 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     },
     /** Snapshot taken before risky operations (import, clear). */
     async backup(state2) {
+      if (state2 === null) {
+        if (persistent) window.localStorage.removeItem(BACKUP_KEY);
+        else memory.delete(BACKUP_KEY);
+        return;
+      }
       write(BACKUP_KEY, { savedAt: (/* @__PURE__ */ new Date()).toISOString(), data: state2 });
     },
     async loadBackup() {
@@ -1985,6 +2026,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       }
     };
   }
+  var DEFAULT_TIME = "2000-01-01T00:00:00.000Z";
   function defaultCategories() {
     return [
       { name: "Study", icon: "\u{1F4DA}", color: "indigo" },
@@ -1994,13 +2036,15 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       { name: "Health", icon: "\u{1F3CB}\uFE0F", color: "rose" },
       { name: "Shopping", icon: "\u{1F6D2}", color: "amber" },
       { name: "Ideas", icon: "\u{1F4A1}", color: "cyan" }
-    ].map((c, i) => createCategory({ ...c, id: `cat_default_${i}` }));
+      // A fixed, old timestamp: on a new device these defaults never override
+      // categories you already edited (or deleted) on another device.
+    ].map((c, i) => createCategory({ ...c, id: `cat_default_${i}`, createdAt: DEFAULT_TIME, updatedAt: DEFAULT_TIME }));
   }
   function createEmptyState() {
     const now2 = nowIso();
     return {
       // deleted: { id: when } remembers deletions so sync can remove them on other devices
-      meta: { schemaVersion: SCHEMA_VERSION, createdAt: now2, updatedAt: now2, prefsUpdatedAt: now2, sample: false, deleted: {} },
+      meta: { schemaVersion: SCHEMA_VERSION, createdAt: now2, updatedAt: now2, prefsUpdatedAt: DEFAULT_TIME, sample: false, deleted: {} },
       profile: { name: "", photo: "" },
       settings: defaultSettings(),
       tasks: [],
@@ -2035,6 +2079,27 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 
   // js/core/i18n.js
   var en = {
+    "sync.guestInfo": "You are using Tempo without an account. Your data is saved only on this device.",
+    "sync.forgot": "Forgot password?",
+    "sync.err.emailFirst": 'Type your email above first, then tap "Forgot password?".',
+    "sync.resetSent": "We sent a password reset link to {email}. Open it on this device to choose a new password.",
+    "sync.guestNote": "An account is optional. Without one, Tempo still works and keeps your data on this device.",
+    "sync.signOutKeep": "Sign out, keep my data here",
+    "sync.signOutKeepDesc": "Good for your own phone or computer.",
+    "sync.signOutClear": "Sign out and remove my data from this device",
+    "sync.signOutClearDesc": "For shared devices. Your data stays safe in your account.",
+    "sync.signedOutCleared": "Signed out. This device is now empty.",
+    "sync.newPasswordTitle": "Choose a new password",
+    "sync.newPasswordLead": "Enter a new password for your account.",
+    "sync.passwordChanged": "Password changed",
+    "sync.signInOrCreate": "Sign in / Create account",
+    "welcome.title": "Welcome to Tempo",
+    "welcome.text": "Plan your day, track tasks and keep notes. How would you like to start?",
+    "welcome.guest": "Start without an account",
+    "welcome.guestDesc": "Everything stays on this device. You can create an account later.",
+    "welcome.account": "Create a free account",
+    "welcome.accountDesc": "Use the same tasks and notes on your phone and computer.",
+    "welcome.haveAccount": "I already have an account",
     "sync.title": "Cloud sync",
     "sync.desc": "Keep the same tasks and notes on your phone and computer.",
     "sync.intro": "Connect your own free Supabase project. Your data goes to your account only.",
@@ -2060,7 +2125,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     "sync.signInHint": "Sign in with the same account on each device to share your data.",
     "sync.signIn": "Sign in",
     "sync.createAccount": "Create account",
-    "sync.accountTitle": "Your sync account",
+    "sync.accountTitle": "Your Tempo account",
     "sync.signInLead": "Use the same email and password on every device.",
     "sync.signUpLead": "Create one account, then sign in with it on your other devices.",
     "sync.email": "Email",
@@ -2522,6 +2587,27 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     "error.reload": "Reload"
   };
   var km = {
+    "sync.guestInfo": "\u17A2\u17D2\u1793\u1780\u1780\u17C6\u1796\u17BB\u1784\u1794\u17D2\u179A\u17BE Tempo \u178A\u17C4\u1799\u1782\u17D2\u1798\u17B6\u1793\u1782\u178E\u1793\u17B8\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u178F\u17D2\u179A\u17BC\u179C\u1794\u17B6\u1793\u179A\u1780\u17D2\u179F\u17B6\u1791\u17BB\u1780\u178F\u17C2\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u1794\u17C9\u17BB\u178E\u17D2\u178E\u17C4\u17C7\u17D4",
+    "sync.forgot": "\u1797\u17D2\u179B\u17C1\u1785\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB?",
+    "sync.err.emailFirst": '\u179F\u17BC\u1798\u179C\u17B6\u1799\u17A2\u17CA\u17B8\u1798\u17C2\u179B\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1781\u17B6\u1784\u179B\u17BE\u1787\u17B6\u1798\u17BB\u1793\u179F\u17B7\u1793 \u179A\u17BD\u1785\u1785\u17BB\u1785 "\u1797\u17D2\u179B\u17C1\u1785\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB?"\u17D4',
+    "sync.resetSent": "\u1799\u17BE\u1784\u1794\u17B6\u1793\u1795\u17D2\u1789\u17BE\u178F\u17C6\u178E\u1780\u17C6\u178E\u178F\u17CB\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u17A1\u17BE\u1784\u179C\u17B7\u1789\u1791\u17C5 {email}\u17D4 \u179F\u17BC\u1798\u1794\u17BE\u1780\u179C\u17B6\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7 \u178A\u17BE\u1798\u17D2\u1794\u17B8\u1787\u17D2\u179A\u17BE\u179F\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u1790\u17D2\u1798\u17B8\u17D4",
+    "sync.guestNote": "\u1782\u178E\u1793\u17B8\u1782\u17BA\u179F\u17D2\u179A\u17C1\u1785\u1785\u17B7\u178F\u17D2\u178F\u17D4 \u1794\u17BE\u1782\u17D2\u1798\u17B6\u1793\u1782\u178E\u1793\u17B8 Tempo \u1793\u17C5\u178F\u17C2\u178A\u17C6\u178E\u17BE\u179A\u1780\u17B6\u179A \u17A0\u17BE\u1799\u179A\u1780\u17D2\u179F\u17B6\u1791\u17BB\u1780\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u17D4",
+    "sync.signOutKeep": "\u1785\u17B6\u1780\u1785\u17C1\u1789 \u17A0\u17BE\u1799\u179A\u1780\u17D2\u179F\u17B6\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1793\u17C5\u1791\u17B8\u1793\u17C1\u17C7",
+    "sync.signOutKeepDesc": "\u179F\u1798\u179A\u1798\u17D2\u1799\u179F\u1798\u17D2\u179A\u17B6\u1794\u17CB\u1791\u17BC\u179A\u179F\u1796\u17D2\u1791 \u17AC\u1780\u17BB\u17C6\u1796\u17D2\u1799\u17BC\u1791\u17D0\u179A\u1795\u17D2\u1791\u17B6\u179B\u17CB\u1781\u17D2\u179B\u17BD\u1793\u17D4",
+    "sync.signOutClear": "\u1785\u17B6\u1780\u1785\u17C1\u1789 \u17A0\u17BE\u1799\u179B\u17BB\u1794\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1785\u17C1\u1789\u1796\u17B8\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7",
+    "sync.signOutClearDesc": "\u179F\u1798\u17D2\u179A\u17B6\u1794\u17CB\u17A7\u1794\u1780\u179A\u178E\u17CD\u1794\u17D2\u179A\u17BE\u179A\u17BD\u1798\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1793\u17C5\u1798\u17B6\u1793\u179F\u17BB\u179C\u178F\u17D2\u1790\u17B7\u1797\u17B6\u1796\u1780\u17D2\u1793\u17BB\u1784\u1782\u178E\u1793\u17B8\u17D4",
+    "sync.signedOutCleared": "\u1794\u17B6\u1793\u1785\u17B6\u1780\u1785\u17C1\u1789\u17D4 \u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u1791\u1791\u17C1\u17A0\u17BE\u1799\u17D4",
+    "sync.newPasswordTitle": "\u1787\u17D2\u179A\u17BE\u179F\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u1790\u17D2\u1798\u17B8",
+    "sync.newPasswordLead": "\u1794\u1789\u17D2\u1785\u17BC\u179B\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u1790\u17D2\u1798\u17B8\u179F\u1798\u17D2\u179A\u17B6\u1794\u17CB\u1782\u178E\u1793\u17B8\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u17D4",
+    "sync.passwordChanged": "\u1794\u17B6\u1793\u1794\u17D2\u178F\u17BC\u179A\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB",
+    "sync.signInOrCreate": "\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8 / \u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8",
+    "welcome.title": "\u179F\u17BC\u1798\u179F\u17D2\u179C\u17B6\u1782\u1798\u1793\u17CD\u1798\u1780\u1780\u17B6\u1793\u17CB Tempo",
+    "welcome.text": "\u179A\u17C0\u1794\u1785\u17C6\u1790\u17D2\u1784\u17C3\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780 \u178F\u17B6\u1798\u178A\u17B6\u1793\u1797\u17B6\u179A\u1780\u17B7\u1785\u17D2\u1785 \u1793\u17B7\u1784\u1780\u178F\u17CB\u178F\u17D2\u179A\u17B6\u17D4 \u178F\u17BE\u17A2\u17D2\u1793\u1780\u1785\u1784\u17CB\u1785\u17B6\u1794\u17CB\u1795\u17D2\u178F\u17BE\u1798\u178A\u17C4\u1799\u179A\u1794\u17C0\u1794\u178E\u17B6?",
+    "welcome.guest": "\u1785\u17B6\u1794\u17CB\u1795\u17D2\u178F\u17BE\u1798\u178A\u17C4\u1799\u1782\u17D2\u1798\u17B6\u1793\u1782\u178E\u1793\u17B8",
+    "welcome.guestDesc": "\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1791\u17B6\u17C6\u1784\u17A2\u179F\u17CB\u1793\u17C5\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u17D4 \u17A2\u17D2\u1793\u1780\u17A2\u17B6\u1785\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8\u1796\u17C1\u179B\u1780\u17D2\u179A\u17C4\u1799\u1794\u17B6\u1793\u17D4",
+    "welcome.account": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8\u17A5\u178F\u1782\u17B7\u178F\u1790\u17D2\u179B\u17C3",
+    "welcome.accountDesc": "\u1794\u17D2\u179A\u17BE\u1797\u17B6\u179A\u1780\u17B7\u1785\u17D2\u1785 \u1793\u17B7\u1784\u1780\u17C6\u178E\u178F\u17CB\u178F\u17D2\u179A\u17B6\u178A\u17BC\u1785\u1782\u17D2\u1793\u17B6 \u1791\u17B6\u17C6\u1784\u179B\u17BE\u1791\u17BC\u179A\u179F\u1796\u17D2\u1791 \u1793\u17B7\u1784\u1780\u17BB\u17C6\u1796\u17D2\u1799\u17BC\u1791\u17D0\u179A\u17D4",
+    "welcome.haveAccount": "\u1781\u17D2\u1789\u17BB\u17C6\u1798\u17B6\u1793\u1782\u178E\u1793\u17B8\u179A\u17BD\u1785\u17A0\u17BE\u1799",
     "sync.title": "\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u179B\u17BE Cloud",
     "sync.desc": "\u179A\u1780\u17D2\u179F\u17B6\u1797\u17B6\u179A\u1780\u17B7\u1785\u17D2\u1785 \u1793\u17B7\u1784\u1780\u17C6\u178E\u178F\u17CB\u178F\u17D2\u179A\u17B6\u178A\u17BC\u1785\u1782\u17D2\u1793\u17B6 \u1791\u17B6\u17C6\u1784\u179B\u17BE\u1791\u17BC\u179A\u179F\u1796\u17D2\u1791 \u1793\u17B7\u1784\u1780\u17BB\u17C6\u1796\u17D2\u1799\u17BC\u1791\u17D0\u179A\u17D4",
     "sync.intro": "\u1797\u17D2\u1787\u17B6\u1794\u17CB\u1791\u17C5\u1782\u1798\u17D2\u179A\u17C4\u1784 Supabase \u17A5\u178F\u1782\u17B7\u178F\u1790\u17D2\u179B\u17C3\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1795\u17D2\u1791\u17B6\u179B\u17CB\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1791\u17C5\u178F\u17C2\u1782\u178E\u1793\u17B8\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1794\u17C9\u17BB\u178E\u17D2\u178E\u17C4\u17C7\u17D4",
@@ -2547,7 +2633,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     "sync.signInHint": "\u1785\u17BC\u179B\u178A\u17C4\u1799\u1782\u178E\u1793\u17B8\u178F\u17C2\u1798\u17BD\u1799\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17B8\u1798\u17BD\u1799\u17D7 \u178A\u17BE\u1798\u17D2\u1794\u17B8\u1785\u17C2\u1780\u179A\u17C6\u179B\u17C2\u1780\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u17D4",
     "sync.signIn": "\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8",
     "sync.createAccount": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8",
-    "sync.accountTitle": "\u1782\u178E\u1793\u17B8\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798",
+    "sync.accountTitle": "\u1782\u178E\u1793\u17B8 Tempo \u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780",
     "sync.signInLead": "\u1794\u17D2\u179A\u17BE\u17A2\u17CA\u17B8\u1798\u17C2\u179B \u1793\u17B7\u1784\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u178A\u17BC\u1785\u1782\u17D2\u1793\u17B6\u179B\u17BE\u1782\u17D2\u179A\u1794\u17CB\u17A7\u1794\u1780\u179A\u178E\u17CD\u17D4",
     "sync.signUpLead": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8\u1798\u17BD\u1799 \u179A\u17BD\u1785\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u1793\u17C4\u17C7\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1795\u17D2\u179F\u17C1\u1784\u1791\u17C0\u178F\u17D4",
     "sync.email": "\u17A2\u17CA\u17B8\u1798\u17C2\u179B",
@@ -3423,7 +3509,18 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       const empty = createEmptyState();
       empty.profile = { ...state.profile };
       empty.settings = { ...state.settings };
+      empty.meta.prefsUpdatedAt = state.meta.prefsUpdatedAt;
       commit((s) => Object.assign(s, empty));
+    },
+    /** Wipe this device completely (no backup) — used when another person signs in or "sign out and clear". */
+    resetDevice() {
+      const empty = createEmptyState();
+      commit((s) => {
+        for (const k of Object.keys(s)) delete s[k];
+        Object.assign(s, empty);
+      }, { track: false });
+      storage.backup(null).catch(() => {
+      });
     },
     async loadSample() {
       await storage.backup(state).catch(() => {
@@ -5074,6 +5171,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 
   // js/features/sync.js
   var CONFIG_KEY = "tempo:sync:v1";
+  var OWNER_KEY = "tempo:sync:owner";
   var SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
   var TABLE = "tempo_data";
   var PUSH_DELAY_MS = 2500;
@@ -5106,8 +5204,17 @@ create policy "tempo: delete own row" on public.tempo_data
     // off | signed-out | syncing | synced | offline | error
     lastSyncAt: null,
     error: "",
-    auto: true
+    auto: true,
+    builtIn: false,
+    // true when the project is set in index.html (window.TEMPO_CLOUD)
+    recovery: false
+    // true after opening a "reset password" email link
   };
+  function builtInConfig() {
+    const c = window.TEMPO_CLOUD;
+    return c && typeof c.url === "string" && c.url.trim() && typeof c.key === "string" && c.key.trim().length > 20 ? { url: normalizeUrl(c.url), key: c.key.trim() } : null;
+  }
+  var cloudAvailable = () => Boolean(builtInConfig() || readConfig()?.url);
   var config = null;
   var client = null;
   var running = null;
@@ -5121,11 +5228,34 @@ create policy "tempo: delete own row" on public.tempo_data
     listeners5.forEach((fn) => fn(getSyncInfo()));
   }
   function readConfig() {
+    let saved = null;
     try {
-      return JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
+      saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
+    } catch {
+    }
+    const builtIn = builtInConfig();
+    if (builtIn) return { ...builtIn, auto: saved?.auto !== false, builtIn: true };
+    return saved;
+  }
+  var readOwner = () => {
+    try {
+      return localStorage.getItem(OWNER_KEY);
     } catch {
       return null;
     }
+  };
+  var writeOwner = (id) => {
+    try {
+      if (id) localStorage.setItem(OWNER_KEY, id);
+      else localStorage.removeItem(OWNER_KEY);
+    } catch {
+    }
+  };
+  function adoptUser(user) {
+    const owner = readOwner();
+    if (owner && owner !== user.id) actions.resetDevice();
+    writeOwner(user.id);
+    set({ user: { id: user.id, email: user.email }, error: "" });
   }
   function writeConfig(c) {
     try {
@@ -5178,28 +5308,52 @@ create policy "tempo: delete own row" on public.tempo_data
     set({ configured: true, url: cleanUrl, status: "signed-out", error: "", auto: true });
   }
   async function signIn(email, password) {
+    await readyPromise;
+    if (!client) throw new Error("sdk-load");
     const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
-    set({ user: { id: data.user.id, email: data.user.email }, error: "" });
+    adoptUser(data.user);
     return syncNow();
   }
   async function signUp(email, password) {
+    await readyPromise;
+    if (!client) throw new Error("sdk-load");
     const redirect = window.location.href.split("#")[0];
     const { data, error } = await client.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirect } });
     if (error) throw error;
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error("already registered");
     if (!data.session) return "confirm-email";
-    set({ user: { id: data.user.id, email: data.user.email }, error: "" });
+    adoptUser(data.user);
     await syncNow();
     return "signed-in";
   }
-  async function signOut() {
+  async function signOut({ clearDevice = false } = {}) {
+    if (info.user && !clearDevice) await syncNow();
     try {
-      await client?.auth.signOut();
+      await client?.auth.signOut({ scope: "local" });
     } catch {
+    }
+    if (clearDevice) {
+      actions.resetDevice();
+      writeOwner(null);
     }
     set({ user: null, status: info.configured ? "signed-out" : "off", lastSyncAt: null });
   }
+  async function resetPassword(email) {
+    await readyPromise;
+    if (!client) throw new Error("sdk-load");
+    const redirectTo = window.location.href.split("#")[0];
+    const { error } = await client.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    if (error) throw error;
+  }
+  async function updatePassword(password) {
+    const { error } = await client.auth.updateUser({ password });
+    if (error) throw error;
+    set({ recovery: false });
+  }
+  var clearRecovery = () => set({ recovery: false });
   async function disconnect() {
+    if (info.builtIn) return;
     await signOut();
     writeConfig(null);
     config = null;
@@ -5209,7 +5363,7 @@ create policy "tempo: delete own row" on public.tempo_data
   function setAutoSync(on) {
     if (!config) return;
     config.auto = on;
-    writeConfig(config);
+    writeConfig(config.builtIn ? { auto: on } : config);
     set({ auto: on });
   }
   async function syncOnce() {
@@ -5271,12 +5425,15 @@ create policy "tempo: delete own row" on public.tempo_data
         set({ user: null, status: "signed-out" });
         return;
       }
+      if (event === "PASSWORD_RECOVERY") set({ recovery: true });
       if (session?.user && (!info.user || info.user.id !== session.user.id)) {
-        set({ user: { id: session.user.id, email: session.user.email } });
+        adoptUser(session.user);
         setTimeout(syncNow, 0);
       }
     });
   }
+  var readyPromise = Promise.resolve();
+  var whenReady = () => readyPromise;
   async function initSync() {
     onLocalChange(() => schedulePush());
     window.addEventListener("online", () => syncNow());
@@ -5292,25 +5449,28 @@ create policy "tempo: delete own row" on public.tempo_data
     setInterval(() => {
       if (!document.hidden && info.auto) syncNow();
     }, POLL_MS);
-    await startClient();
+    readyPromise = startClient().catch(() => {
+    });
+    await readyPromise;
   }
   async function startClient() {
     config = readConfig();
     if (!config?.url || !config?.key) return;
-    set({ configured: true, url: config.url, auto: config.auto !== false, status: "signed-out" });
+    set({ configured: true, url: config.url, auto: config.auto !== false, builtIn: Boolean(config.builtIn), status: "signed-out" });
     try {
       client = await makeClient(config.url, config.key);
     } catch {
       set({ status: "offline" });
       window.addEventListener("online", () => {
-        if (!client) startClient();
+        if (!client) readyPromise = startClient().catch(() => {
+        });
       }, { once: true });
       return;
     }
     attachAuthListener();
     const { data } = await client.auth.getSession();
-    if (data?.session?.user) {
-      set({ user: { id: data.session.user.id, email: data.session.user.email } });
+    if (data?.session?.user && !info.user) {
+      adoptUser(data.session.user);
       syncNow();
     }
   }
@@ -5360,12 +5520,12 @@ create policy "tempo: delete own row" on public.tempo_data
     }
     if (!s.user) {
       return `<div class="sync-card">
-      <div class="sync-card__row">${icon("link", { size: 16 })}<span>${esc(t("sync.connectedTo"))} <strong>${esc(host(s.url))}</strong></span></div>
+      ${s.builtIn ? `<p class="sync-card__lead">${esc(t("sync.guestInfo"))}</p>` : `<div class="sync-card__row">${icon("link", { size: 16 })}<span>${esc(t("sync.connectedTo"))} <strong>${esc(host(s.url))}</strong></span></div>`}
       <p class="sync-card__hint">${esc(t("sync.signInHint"))}</p>
       <div class="sync-card__actions">
         <button type="button" class="btn btn--primary btn--md" data-action="sync-auth" data-mode="signin">${icon("user", { size: 16 })}<span>${esc(t("sync.signIn"))}</span></button>
         <button type="button" class="btn btn--secondary btn--md" data-action="sync-auth" data-mode="signup">${esc(t("sync.createAccount"))}</button>
-        <button type="button" class="link-btn link-btn--muted" data-action="sync-disconnect">${esc(t("sync.disconnect"))}</button>
+        ${s.builtIn ? "" : `<button type="button" class="link-btn link-btn--muted" data-action="sync-disconnect">${esc(t("sync.disconnect"))}</button>`}
       </div>
     </div>`;
     }
@@ -5379,7 +5539,7 @@ create policy "tempo: delete own row" on public.tempo_data
       <button type="button" class="btn btn--secondary btn--md" data-action="sync-signout">${icon("logout", { size: 16 })}<span>${esc(t("sync.signOut"))}</span></button>
     </div>
     ${toggle({ id: "sync-auto", checked: s.auto, label: t("sync.auto"), desc: t("sync.autoDesc"), change: "sync-auto" })}
-    <p class="sync-card__hint">${icon("link", { size: 13 })} ${esc(host(s.url))} \xB7 <button type="button" class="link-btn link-btn--muted" data-action="sync-disconnect">${esc(t("sync.disconnect"))}</button></p>
+    ${s.builtIn ? "" : `<p class="sync-card__hint">${icon("link", { size: 13 })} ${esc(host(s.url))} \xB7 <button type="button" class="link-btn link-btn--muted" data-action="sync-disconnect">${esc(t("sync.disconnect"))}</button></p>`}
   </div>`;
   }
   function errorText(err) {
@@ -5469,8 +5629,10 @@ create policy "tempo: delete own row" on public.tempo_data
           <input class="input" id="auth-email" type="email" autocomplete="email" required autofocus></div>
         <div class="field"><label class="field__label" for="auth-pass">${esc(t("sync.password"))}</label>
           <input class="input" id="auth-pass" type="password" minlength="6" required></div>
+        <button type="button" class="link-btn auth-forgot" id="auth-forgot">${esc(t("sync.forgot"))}</button>
         <p class="field__error" id="auth-error" hidden></p>
         <p class="auth-note" id="auth-note" hidden></p>
+        <p class="auth-guest">${icon("info", { size: 14 })}<span>${esc(t("sync.guestNote"))}</span></p>
       </form>`,
       footer: `<span class="modal__foot-spacer"></span>
       <button type="button" class="btn btn--secondary btn--md" data-close>${esc(t("common.cancel"))}</button>
@@ -5486,7 +5648,27 @@ create policy "tempo: delete own row" on public.tempo_data
           go.textContent = current2 === "signin" ? t("sync.signIn") : t("sync.createAccount");
           lead.textContent = current2 === "signin" ? t("sync.signInLead") : t("sync.signUpLead");
           pass.autocomplete = current2 === "signin" ? "current-password" : "new-password";
+          root2.querySelector("#auth-forgot").hidden = current2 !== "signin";
         };
+        root2.querySelector("#auth-forgot").addEventListener("click", async () => {
+          errEl.hidden = true;
+          note.hidden = true;
+          const email = root2.querySelector("#auth-email").value.trim();
+          if (!/^\S+@\S+\.\S+$/.test(email)) {
+            errEl.textContent = t("sync.err.emailFirst");
+            errEl.hidden = false;
+            root2.querySelector("#auth-email").focus();
+            return;
+          }
+          try {
+            await resetPassword(email);
+            note.textContent = t("sync.resetSent", { email });
+            note.hidden = false;
+          } catch (err) {
+            errEl.textContent = errorText(err);
+            errEl.hidden = false;
+          }
+        });
         paint();
         root2.querySelectorAll('input[name="auth-mode"]').forEach((r) => r.addEventListener("change", () => {
           current2 = r.value;
@@ -5561,12 +5743,7 @@ create policy "tempo: delete own row" on public.tempo_data
         toast(after.status === "synced" ? t("sync.done") : statusText(after), { icon: after.status === "synced" ? "cloudCheck" : "cloudOff" });
       });
     },
-    "sync-signout": async () => {
-      const ok = await confirmDialog({ title: t("sync.signOutTitle"), message: t("sync.signOutText"), confirmLabel: t("sync.signOut"), danger: false, emoji: "\u2601\uFE0F" });
-      if (!ok) return;
-      await signOut();
-      toast(t("sync.signedOut"), { icon: "logout" });
-    },
+    "sync-signout": () => openSignOut(),
     "sync-disconnect": async () => {
       const ok = await confirmDialog({ title: t("sync.disconnectTitle"), message: t("sync.disconnectText"), confirmLabel: t("sync.disconnect"), danger: false, emoji: "\u{1F50C}" });
       if (!ok) return;
@@ -5579,6 +5756,103 @@ create policy "tempo: delete own row" on public.tempo_data
     }
   });
   registerChange({ "sync-auto": (el2) => setAutoSync(el2.checked) });
+  function openSignOut() {
+    const m = openModal({
+      title: t("sync.signOutTitle"),
+      size: "sm",
+      body: `<p class="modal__lead">${esc(t("sync.signOutText"))}</p>
+      <div class="choice-list">
+        <button type="button" class="choice" data-choice="keep">${icon("check", { size: 18 })}<span><strong>${esc(t("sync.signOutKeep"))}</strong><small>${esc(t("sync.signOutKeepDesc"))}</small></span></button>
+        <button type="button" class="choice choice--danger" data-choice="clear">${icon("trash", { size: 18 })}<span><strong>${esc(t("sync.signOutClear"))}</strong><small>${esc(t("sync.signOutClearDesc"))}</small></span></button>
+      </div>`,
+      footer: `<span class="modal__foot-spacer"></span><button type="button" class="btn btn--secondary btn--md" data-close>${esc(t("common.cancel"))}</button>`,
+      onMount(root2) {
+        root2.querySelectorAll("[data-choice]").forEach((b) => b.addEventListener("click", async () => {
+          root2.querySelectorAll("[data-choice]").forEach((x) => {
+            x.disabled = true;
+          });
+          await signOut({ clearDevice: b.dataset.choice === "clear" });
+          m.close(true);
+          toast(b.dataset.choice === "clear" ? t("sync.signedOutCleared") : t("sync.signedOut"), { icon: "logout" });
+        }));
+      }
+    });
+  }
+  var recoveryOpen = false;
+  function openRecovery() {
+    if (recoveryOpen) return;
+    recoveryOpen = true;
+    const m = openModal({
+      title: t("sync.newPasswordTitle"),
+      size: "sm",
+      onClose: () => {
+        recoveryOpen = false;
+        clearRecovery();
+      },
+      body: `<form class="form" id="newpass-form" novalidate>
+      <p class="modal__lead">${esc(t("sync.newPasswordLead"))}</p>
+      <div class="field"><label class="field__label" for="newpass">${esc(t("sync.password"))}</label>
+        <input class="input" id="newpass" type="password" minlength="6" autocomplete="new-password" required autofocus></div>
+      <p class="field__error" id="newpass-error" hidden></p>
+    </form>`,
+      footer: `<span class="modal__foot-spacer"></span><button type="submit" form="newpass-form" class="btn btn--primary btn--md">${esc(t("common.save"))}</button>`,
+      onMount(root2) {
+        root2.querySelector("#newpass-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const err = root2.querySelector("#newpass-error");
+          const pw = root2.querySelector("#newpass").value;
+          if (pw.length < 6) {
+            err.textContent = t("sync.err.password");
+            err.hidden = false;
+            return;
+          }
+          try {
+            await updatePassword(pw);
+            m.close(true);
+            toast(t("sync.passwordChanged"), { icon: "lock", type: "success" });
+          } catch (ex) {
+            err.textContent = errorText(ex);
+            err.hidden = false;
+          }
+        });
+      }
+    });
+  }
+  onSyncChange((s) => {
+    if (s.recovery) openRecovery();
+  });
+  function showWelcomeIfNeeded() {
+    if (prefs.get("welcomed", false)) return;
+    const st = getState();
+    const s = getSyncInfo();
+    if (!cloudAvailable() || s.user || st.tasks.length || st.notes.length) {
+      prefs.set("welcomed", true);
+      return;
+    }
+    const m = openModal({
+      size: "sm",
+      label: t("welcome.title"),
+      cls: "modal-layer--welcome",
+      body: `<div class="welcome">
+      <img src="apple-touch-icon.png" alt="" width="64" height="64" class="welcome__icon">
+      <h2 class="welcome__title">${esc(t("welcome.title"))}</h2>
+      <p class="welcome__text">${esc(t("welcome.text"))}</p>
+      <div class="choice-list">
+        <button type="button" class="choice" data-welcome="guest">${icon("monitor", { size: 18 })}<span><strong>${esc(t("welcome.guest"))}</strong><small>${esc(t("welcome.guestDesc"))}</small></span></button>
+        <button type="button" class="choice choice--primary" data-welcome="signup">${icon("cloud", { size: 18 })}<span><strong>${esc(t("welcome.account"))}</strong><small>${esc(t("welcome.accountDesc"))}</small></span></button>
+      </div>
+      <button type="button" class="link-btn" data-welcome="signin">${esc(t("welcome.haveAccount"))}</button>
+    </div>`,
+      onClose: () => prefs.set("welcomed", true),
+      onMount(root2) {
+        root2.querySelectorAll("[data-welcome]").forEach((b) => b.addEventListener("click", () => {
+          const choice = b.dataset.welcome;
+          m.close(true);
+          if (choice !== "guest") setTimeout(() => openAuth(choice), 200);
+        }));
+      }
+    });
+  }
 
   // js/layout/shell.js
   var NAV = [
@@ -5736,9 +6010,18 @@ create policy "tempo: delete own row" on public.tempo_data
     },
     "open-profile-menu": (el2) => {
       const s = getState();
+      const sync = getSyncInfo();
+      const account = !cloudAvailable() ? [] : sync.user ? [
+        { label: sync.user.email, icon: "cloudCheck", onClick: () => {
+          navigate("settings");
+          setTimeout(() => document.getElementById("settings-sync")?.scrollIntoView({ behavior: "smooth", block: "start" }), 250);
+        } },
+        { label: t("sync.signOut"), icon: "logout", onClick: () => openSignOut() }
+      ] : [{ label: t("sync.signInOrCreate"), icon: "cloud", onClick: () => openAuth("signin") }];
       openDropdown(el2, {
         items: [
           { label: s.profile.name || t("profile.you"), icon: "user", onClick: () => navigate("settings") },
+          ...account,
           "divider",
           { label: t("nav.settings"), icon: "settings", onClick: () => navigate("settings") },
           { label: t("theme.light"), icon: "sun", onClick: () => {
@@ -7239,6 +7522,7 @@ create policy "tempo: delete own row" on public.tempo_data
     onInstallChange(requestRender);
     onSyncChange(requestRender);
     initSync().catch((err) => console.warn("[sync] start failed", err));
+    whenReady().then(() => setTimeout(showWelcomeIfNeeded, 400));
     if (sampleWasRemoved()) setTimeout(() => toast(t("toast.sampleRemoved"), { icon: "sparkle", duration: 6e3 }), 600);
     onSaveError(() => toast(t("toast.saveFailed"), { icon: "alert", type: "error", duration: 8e3 }));
     initSwipe();
