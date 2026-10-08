@@ -1241,6 +1241,41 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 .install-help ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; color: var(--text-secondary); }
 .install-btn { color: var(--primary); }
 
+/* ============================== Cloud sync ============================== */
+.sync-btn.is-ok { color: var(--success); }
+.sync-btn.is-off { color: var(--text-tertiary); }
+.sync-btn.is-error { color: var(--danger); }
+.sync-btn.is-syncing .icon { animation: spin 1s linear infinite; color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.sync-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 12px; color: var(--text-secondary); }
+.sync-points { display: flex; flex-direction: column; gap: 6px; }
+.sync-points li { display: flex; gap: 8px; align-items: center; font-size: var(--text-sm); }
+.sync-points .icon { color: var(--success); flex: none; }
+.sync-card { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+.sync-card__row { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); }
+.sync-card__row--status { padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border); }
+.sync-card__row--status div { display: flex; flex-direction: column; min-width: 0; }
+.sync-card__row--status strong { color: var(--text-primary); overflow-wrap: anywhere; }
+.sync-card__row--status span { font-size: var(--text-sm); }
+.sync-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--text-tertiary); }
+.is-synced .sync-dot { background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
+.is-syncing .sync-dot { background: var(--primary); animation: urgent-glow 1s infinite; }
+.is-error .sync-dot { background: var(--danger); }
+.is-offline .sync-dot { background: var(--warning); }
+.sync-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sync-card__hint { font-size: var(--text-xs); color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.link-btn--muted { color: var(--text-tertiary); font-weight: 600; font-size: inherit; padding: 2px 4px; }
+.link-btn--muted:hover { color: var(--danger); background: var(--danger-soft); }
+.setup-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 18px; }
+.setup-steps li::marker { font-weight: 700; color: var(--primary); }
+.setup-steps p { color: var(--text-secondary); font-size: var(--text-sm); margin: 4px 0 8px; }
+.code-wrap { position: relative; }
+.code-block { margin: 0; max-height: 200px; overflow: auto; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.55; white-space: pre; }
+.code-wrap__copy { position: absolute; top: 8px; right: 8px; }
+.auth-tabs { width: 100%; display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 14px; }
+.auth-tabs .segmented__opt > span { justify-content: center; width: 100%; }
+.auth-note { padding: 12px; border-radius: var(--radius-sm); background: var(--info-soft); color: var(--text-primary); font-size: var(--text-sm); }
+
 /* ==========================================================================
    PAGES — layouts specific to each screen.
    Dashboard → js/pages/dashboard.js   Tasks → js/pages/tasks.js
@@ -1909,11 +1944,12 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       createdAt: nowIso(),
       ...input
     };
+    if (!cat.updatedAt) cat.updatedAt = cat.createdAt;
     if (!COLOR_KEYS.includes(cat.color)) cat.color = "indigo";
     return cat;
   }
   function createReminder(input = {}) {
-    return {
+    const reminder = {
       id: uid("r"),
       title: "",
       at: null,
@@ -1925,6 +1961,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       createdAt: nowIso(),
       ...input
     };
+    if (!reminder.updatedAt) reminder.updatedAt = reminder.createdAt;
+    return reminder;
   }
   function defaultSettings() {
     return {
@@ -1961,7 +1999,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
   function createEmptyState() {
     const now2 = nowIso();
     return {
-      meta: { schemaVersion: SCHEMA_VERSION, createdAt: now2, updatedAt: now2, sample: false },
+      // deleted: { id: when } remembers deletions so sync can remove them on other devices
+      meta: { schemaVersion: SCHEMA_VERSION, createdAt: now2, updatedAt: now2, prefsUpdatedAt: now2, sample: false, deleted: {} },
       profile: { name: "", photo: "" },
       settings: defaultSettings(),
       tasks: [],
@@ -1976,7 +2015,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     const settings = { ...base.settings, ...raw.settings || {} };
     settings.notifications = { ...base.settings.notifications, ...raw.settings?.notifications || {} };
     return {
-      meta: { ...base.meta, ...raw.meta || {}, schemaVersion: SCHEMA_VERSION },
+      meta: { ...base.meta, ...raw.meta || {}, deleted: { ...raw.meta?.deleted || {} }, schemaVersion: SCHEMA_VERSION },
       profile: { ...base.profile, ...raw.profile || {} },
       settings,
       tasks: asArray(raw.tasks).filter((t2) => t2 && t2.id).map((t2) => createTask(t2)),
@@ -1996,6 +2035,67 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 
   // js/core/i18n.js
   var en = {
+    "sync.title": "Cloud sync",
+    "sync.desc": "Keep the same tasks and notes on your phone and computer.",
+    "sync.intro": "Connect your own free Supabase project. Your data goes to your account only.",
+    "sync.point1": "Works offline and syncs when you are back online",
+    "sync.point2": "Edits from different devices are merged, nothing is overwritten",
+    "sync.point3": "Only you can read your data (row level security)",
+    "sync.setup": "Set up sync",
+    "sync.setupTitle": "Connect Supabase",
+    "sync.step1": "Create a project",
+    "sync.step1Text": "Sign in at supabase.com and create a new project (the free plan is enough). You can also use a project you already have.",
+    "sync.step2": "Create the table",
+    "sync.step2Text": "In your project open SQL Editor \u2192 New query, paste this code and press Run. You only do this once.",
+    "sync.step3": "Paste your project details",
+    "sync.step3Text": "In Project Settings \u2192 API Keys (and Data API for the URL), copy the Project URL and the publishable key.",
+    "sync.keyLabel": "Publishable (anon public) key",
+    "sync.keyHint": "Never paste the secret / service_role key here.",
+    "sync.step4": "Email confirmation (optional)",
+    "sync.step4Text": `Supabase asks new accounts to confirm their email. To skip it, turn off "Confirm email" in Authentication \u2192 Sign In / Providers \u2192 Email. If you keep it, set Authentication \u2192 URL Configuration \u2192 Site URL to this app's address.`,
+    "sync.connect": "Connect",
+    "sync.connecting": "Connecting\u2026",
+    "sync.connected": "Connected to Supabase. Now create your account or sign in.",
+    "sync.connectedTo": "Connected to",
+    "sync.signInHint": "Sign in with the same account on each device to share your data.",
+    "sync.signIn": "Sign in",
+    "sync.createAccount": "Create account",
+    "sync.accountTitle": "Your sync account",
+    "sync.signInLead": "Use the same email and password on every device.",
+    "sync.signUpLead": "Create one account, then sign in with it on your other devices.",
+    "sync.email": "Email",
+    "sync.password": "Password (at least 6 characters)",
+    "sync.working": "Please wait\u2026",
+    "sync.confirmEmail": "We sent a confirmation link to {email}. Open it, then come back and sign in here.",
+    "sync.signedIn": "Signed in. Your data is syncing.",
+    "sync.signInToSync": "Sign in to sync",
+    "sync.now": "Sync now",
+    "sync.done": "Everything is synced",
+    "sync.auto": "Sync automatically",
+    "sync.autoDesc": "Upload changes a few seconds after you edit, and check for updates every minute.",
+    "sync.signOut": "Sign out",
+    "sync.signOutTitle": "Sign out of sync?",
+    "sync.signOutText": "Your data stays on this device. Changes will not sync until you sign in again.",
+    "sync.signedOut": "Signed out",
+    "sync.disconnect": "Disconnect",
+    "sync.disconnectTitle": "Disconnect Supabase?",
+    "sync.disconnectText": "This device stops syncing. Your data stays here and in Supabase.",
+    "sync.disconnected": "Sync turned off on this device",
+    "sync.status.syncing": "Syncing\u2026",
+    "sync.status.offline": "Offline. Changes will sync when you are back online.",
+    "sync.status.error": "Sync problem:",
+    "sync.status.synced": "Synced {when}",
+    "sync.status.waiting": "Waiting to sync",
+    "sync.err.badConfig": "Check the Project URL (https://\u2026.supabase.co) and the key.",
+    "sync.err.noTable": "The table was not found. Run the SQL code from step 2 first.",
+    "sync.err.sdk": "Could not download the Supabase library. Check your internet connection.",
+    "sync.err.login": "Wrong email or password.",
+    "sync.err.notConfirmed": "Confirm your email first (check your inbox), then sign in.",
+    "sync.err.exists": "This email already has an account. Choose Sign in.",
+    "sync.err.password": "The password must be at least 6 characters.",
+    "sync.err.email": "Enter a valid email address.",
+    "sync.err.key": "Supabase did not accept the key. Copy the publishable (anon) key again.",
+    "sync.err.network": "Could not reach Supabase. Check your internet connection.",
     "common.ok": "Got it",
     "settings.photoAdd": "Add photo",
     "settings.photoChange": "Change photo",
@@ -2422,6 +2522,67 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     "error.reload": "Reload"
   };
   var km = {
+    "sync.title": "\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u179B\u17BE Cloud",
+    "sync.desc": "\u179A\u1780\u17D2\u179F\u17B6\u1797\u17B6\u179A\u1780\u17B7\u1785\u17D2\u1785 \u1793\u17B7\u1784\u1780\u17C6\u178E\u178F\u17CB\u178F\u17D2\u179A\u17B6\u178A\u17BC\u1785\u1782\u17D2\u1793\u17B6 \u1791\u17B6\u17C6\u1784\u179B\u17BE\u1791\u17BC\u179A\u179F\u1796\u17D2\u1791 \u1793\u17B7\u1784\u1780\u17BB\u17C6\u1796\u17D2\u1799\u17BC\u1791\u17D0\u179A\u17D4",
+    "sync.intro": "\u1797\u17D2\u1787\u17B6\u1794\u17CB\u1791\u17C5\u1782\u1798\u17D2\u179A\u17C4\u1784 Supabase \u17A5\u178F\u1782\u17B7\u178F\u1790\u17D2\u179B\u17C3\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1795\u17D2\u1791\u17B6\u179B\u17CB\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1791\u17C5\u178F\u17C2\u1782\u178E\u1793\u17B8\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1794\u17C9\u17BB\u178E\u17D2\u178E\u17C4\u17C7\u17D4",
+    "sync.point1": "\u178A\u17C6\u178E\u17BE\u179A\u1780\u17B6\u179A\u1780\u17D2\u179A\u17C5\u1794\u178E\u17D2\u178F\u17B6\u1789 \u17A0\u17BE\u1799\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u1796\u17C1\u179B\u1798\u17B6\u1793\u17A2\u17CA\u17B8\u1793\u1792\u17BA\u178E\u17B7\u178F\u179C\u17B7\u1789",
+    "sync.point2": "\u1780\u17B6\u179A\u1780\u17C2\u1794\u17D2\u179A\u17C2\u1796\u17B8\u17A7\u1794\u1780\u179A\u178E\u17CD\u1795\u17D2\u179F\u17C1\u1784\u17D7\u178F\u17D2\u179A\u17BC\u179C\u1794\u17B6\u1793\u1794\u1789\u17D2\u1785\u17BC\u179B\u1782\u17D2\u1793\u17B6 \u1798\u17B7\u1793\u179F\u179A\u179F\u17C1\u179A\u1787\u17B6\u1793\u17CB\u1782\u17D2\u1793\u17B6\u1791\u17C1",
+    "sync.point3": "\u1798\u17B6\u1793\u178F\u17C2\u17A2\u17D2\u1793\u1780\u1794\u17C9\u17BB\u178E\u17D2\u178E\u17C4\u17C7\u178A\u17C2\u179B\u17A2\u17B6\u1785\u17A2\u17B6\u1793\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780 (row level security)",
+    "sync.setup": "\u179A\u17C0\u1794\u1785\u17C6\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798",
+    "sync.setupTitle": "\u1797\u17D2\u1787\u17B6\u1794\u17CB Supabase",
+    "sync.step1": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u1798\u17D2\u179A\u17C4\u1784",
+    "sync.step1Text": "\u1785\u17BC\u179B supabase.com \u17A0\u17BE\u1799\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u1798\u17D2\u179A\u17C4\u1784\u1790\u17D2\u1798\u17B8 (\u1782\u1798\u17D2\u179A\u17C4\u1784\u17A5\u178F\u1782\u17B7\u178F\u1790\u17D2\u179B\u17C3\u1782\u17BA\u1782\u17D2\u179A\u1794\u17CB\u1782\u17D2\u179A\u17B6\u1793\u17CB)\u17D4 \u17A2\u17D2\u1793\u1780\u1780\u17CF\u17A2\u17B6\u1785\u1794\u17D2\u179A\u17BE\u1782\u1798\u17D2\u179A\u17C4\u1784\u178A\u17C2\u179B\u1798\u17B6\u1793\u179F\u17D2\u179A\u17B6\u1794\u17CB\u1794\u17B6\u1793\u178A\u17C2\u179A\u17D4",
+    "sync.step2": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u178F\u17B6\u179A\u17B6\u1784",
+    "sync.step2Text": "\u1780\u17D2\u1793\u17BB\u1784\u1782\u1798\u17D2\u179A\u17C4\u1784 \u1794\u17BE\u1780 SQL Editor \u2192 New query \u1794\u17B7\u1791\u1797\u17D2\u1787\u17B6\u1794\u17CB\u1780\u17BC\u178A\u1793\u17C1\u17C7 \u17A0\u17BE\u1799\u1785\u17BB\u1785 Run\u17D4 \u1792\u17D2\u179C\u17BE\u178F\u17C2\u1798\u17D2\u178F\u1784\u1782\u178F\u17CB\u17D4",
+    "sync.step3": "\u1794\u17B7\u1791\u1797\u17D2\u1787\u17B6\u1794\u17CB\u1796\u17D0\u178F\u17CC\u1798\u17B6\u1793\u1782\u1798\u17D2\u179A\u17C4\u1784",
+    "sync.step3Text": "\u1793\u17C5 Project Settings \u2192 API Keys (\u1793\u17B7\u1784 Data API \u179F\u1798\u17D2\u179A\u17B6\u1794\u17CB URL) \u1785\u1798\u17D2\u179B\u1784 Project URL \u1793\u17B7\u1784 publishable key\u17D4",
+    "sync.keyLabel": "Publishable (anon public) key",
+    "sync.keyHint": "\u1780\u17BB\u17C6\u1794\u17B7\u1791\u1797\u17D2\u1787\u17B6\u1794\u17CB secret / service_role key \u1793\u17C5\u1791\u17B8\u1793\u17C1\u17C7\u178A\u17B6\u1785\u17CB\u1781\u17B6\u178F\u17D4",
+    "sync.step4": "\u1780\u17B6\u179A\u1794\u1789\u17D2\u1787\u17B6\u1780\u17CB\u17A2\u17CA\u17B8\u1798\u17C2\u179B (\u179F\u17D2\u179A\u17C1\u1785\u1785\u17B7\u178F\u17D2\u178F)",
+    "sync.step4Text": 'Supabase \u179F\u17BB\u17C6\u17B1\u17D2\u1799\u1782\u178E\u1793\u17B8\u1790\u17D2\u1798\u17B8\u1794\u1789\u17D2\u1787\u17B6\u1780\u17CB\u17A2\u17CA\u17B8\u1798\u17C2\u179B\u17D4 \u1794\u17BE\u1785\u1784\u17CB\u179A\u17C6\u179B\u1784 \u179F\u17BC\u1798\u1794\u17B7\u1791 "Confirm email" \u1793\u17C5 Authentication \u2192 Sign In / Providers \u2192 Email\u17D4 \u1794\u17BE\u179A\u1780\u17D2\u179F\u17B6\u1791\u17BB\u1780 \u179F\u17BC\u1798\u1780\u17C6\u178E\u178F\u17CB Authentication \u2192 URL Configuration \u2192 Site URL \u1787\u17B6\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8\u1793\u17C1\u17C7\u17D4',
+    "sync.connect": "\u1797\u17D2\u1787\u17B6\u1794\u17CB",
+    "sync.connecting": "\u1780\u17C6\u1796\u17BB\u1784\u1797\u17D2\u1787\u17B6\u1794\u17CB\u2026",
+    "sync.connected": "\u1794\u17B6\u1793\u1797\u17D2\u1787\u17B6\u1794\u17CB Supabase\u17D4 \u17A5\u17A1\u17BC\u179C\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8 \u17AC\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u17D4",
+    "sync.connectedTo": "\u1794\u17B6\u1793\u1797\u17D2\u1787\u17B6\u1794\u17CB\u1791\u17C5",
+    "sync.signInHint": "\u1785\u17BC\u179B\u178A\u17C4\u1799\u1782\u178E\u1793\u17B8\u178F\u17C2\u1798\u17BD\u1799\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17B8\u1798\u17BD\u1799\u17D7 \u178A\u17BE\u1798\u17D2\u1794\u17B8\u1785\u17C2\u1780\u179A\u17C6\u179B\u17C2\u1780\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u17D4",
+    "sync.signIn": "\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8",
+    "sync.createAccount": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8",
+    "sync.accountTitle": "\u1782\u178E\u1793\u17B8\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798",
+    "sync.signInLead": "\u1794\u17D2\u179A\u17BE\u17A2\u17CA\u17B8\u1798\u17C2\u179B \u1793\u17B7\u1784\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u178A\u17BC\u1785\u1782\u17D2\u1793\u17B6\u179B\u17BE\u1782\u17D2\u179A\u1794\u17CB\u17A7\u1794\u1780\u179A\u178E\u17CD\u17D4",
+    "sync.signUpLead": "\u1794\u1784\u17D2\u1780\u17BE\u178F\u1782\u178E\u1793\u17B8\u1798\u17BD\u1799 \u179A\u17BD\u1785\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u1793\u17C4\u17C7\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1795\u17D2\u179F\u17C1\u1784\u1791\u17C0\u178F\u17D4",
+    "sync.email": "\u17A2\u17CA\u17B8\u1798\u17C2\u179B",
+    "sync.password": "\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB (\u1799\u17C9\u17B6\u1784\u178F\u17B7\u1785 \u17E6 \u178F\u17BD)",
+    "sync.working": "\u179F\u17BC\u1798\u179A\u1784\u17CB\u1785\u17B6\u17C6\u2026",
+    "sync.confirmEmail": "\u1799\u17BE\u1784\u1794\u17B6\u1793\u1795\u17D2\u1789\u17BE\u178F\u17C6\u178E\u1794\u1789\u17D2\u1787\u17B6\u1780\u17CB\u1791\u17C5 {email}\u17D4 \u179F\u17BC\u1798\u1794\u17BE\u1780\u178F\u17C6\u178E\u1793\u17C4\u17C7 \u179A\u17BD\u1785\u178F\u17D2\u179A\u17A1\u1794\u17CB\u1798\u1780\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u1793\u17C5\u1791\u17B8\u1793\u17C1\u17C7\u17D4",
+    "sync.signedIn": "\u1794\u17B6\u1793\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1780\u17C6\u1796\u17BB\u1784\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u17D4",
+    "sync.signInToSync": "\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u178A\u17BE\u1798\u17D2\u1794\u17B8\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798",
+    "sync.now": "\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u17A5\u17A1\u17BC\u179C",
+    "sync.done": "\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1791\u17B6\u17C6\u1784\u17A2\u179F\u17CB\u1794\u17B6\u1793\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u17A0\u17BE\u1799",
+    "sync.auto": "\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u179F\u17D2\u179C\u17D0\u1799\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7",
+    "sync.autoDesc": "\u1794\u1789\u17D2\u1787\u17BC\u1793\u1780\u17B6\u179A\u1780\u17C2\u1794\u17D2\u179A\u17C2\u1794\u17C9\u17BB\u1793\u17D2\u1798\u17B6\u1793\u179C\u17B7\u1793\u17B6\u1791\u17B8\u1780\u17D2\u179A\u17C4\u1799\u1796\u17C1\u179B\u1780\u17C2 \u17A0\u17BE\u1799\u1796\u17B7\u1793\u17B7\u178F\u17D2\u1799\u1780\u17B6\u179A\u1792\u17D2\u179C\u17BE\u1794\u1785\u17D2\u1785\u17BB\u1794\u17D2\u1794\u1793\u17D2\u1793\u1797\u17B6\u1796\u179A\u17C0\u1784\u179A\u17B6\u179B\u17CB\u1793\u17B6\u1791\u17B8\u17D4",
+    "sync.signOut": "\u1785\u17B6\u1780\u1785\u17C1\u1789",
+    "sync.signOutTitle": "\u1785\u17B6\u1780\u1785\u17C1\u1789\u1796\u17B8\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798?",
+    "sync.signOutText": "\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1793\u17C5\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u178A\u178A\u17C2\u179B\u17D4 \u1780\u17B6\u179A\u1780\u17C2\u1794\u17D2\u179A\u17C2\u1793\u17B9\u1784\u1798\u17B7\u1793\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u1791\u17C1 \u179A\u17A0\u17BC\u178F\u178A\u179B\u17CB\u17A2\u17D2\u1793\u1780\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u1798\u17D2\u178F\u1784\u1791\u17C0\u178F\u17D4",
+    "sync.signedOut": "\u1794\u17B6\u1793\u1785\u17B6\u1780\u1785\u17C1\u1789",
+    "sync.disconnect": "\u1795\u17D2\u178F\u17B6\u1785\u17CB",
+    "sync.disconnectTitle": "\u1795\u17D2\u178F\u17B6\u1785\u17CB Supabase?",
+    "sync.disconnectText": "\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u1793\u17B9\u1784\u1788\u1794\u17CB\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1793\u17C5\u1791\u17B8\u1793\u17C1\u17C7 \u1793\u17B7\u1784\u1793\u17C5 Supabase \u178A\u178A\u17C2\u179B\u17D4",
+    "sync.disconnected": "\u1794\u17B6\u1793\u1794\u17B7\u1791\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7",
+    "sync.status.syncing": "\u1780\u17C6\u1796\u17BB\u1784\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u2026",
+    "sync.status.offline": "\u1782\u17D2\u1798\u17B6\u1793\u17A2\u17CA\u17B8\u1793\u1792\u17BA\u178E\u17B7\u178F\u17D4 \u1793\u17B9\u1784\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u1796\u17C1\u179B\u1798\u17B6\u1793\u17A2\u17CA\u17B8\u1793\u1792\u17BA\u178E\u17B7\u178F\u179C\u17B7\u1789\u17D4",
+    "sync.status.error": "\u1794\u1789\u17D2\u17A0\u17B6\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798\u17D6",
+    "sync.status.synced": "\u1794\u17B6\u1793\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798 {when}",
+    "sync.status.waiting": "\u1780\u17C6\u1796\u17BB\u1784\u179A\u1784\u17CB\u1785\u17B6\u17C6\u1792\u17D2\u179C\u17BE\u179F\u1798\u1780\u17B6\u179B\u1780\u1798\u17D2\u1798",
+    "sync.err.badConfig": "\u179F\u17BC\u1798\u1796\u17B7\u1793\u17B7\u178F\u17D2\u1799 Project URL (https://\u2026.supabase.co) \u1793\u17B7\u1784 key\u17D4",
+    "sync.err.noTable": "\u179A\u1780\u178F\u17B6\u179A\u17B6\u1784\u1798\u17B7\u1793\u1783\u17BE\u1789\u17D4 \u179F\u17BC\u1798\u178A\u17C6\u178E\u17BE\u179A\u1780\u17B6\u179A\u1780\u17BC\u178A SQL \u1780\u17D2\u1793\u17BB\u1784\u1787\u17C6\u17A0\u17B6\u1793\u1791\u17B8 \u17E2 \u1787\u17B6\u1798\u17BB\u1793\u179F\u17B7\u1793\u17D4",
+    "sync.err.sdk": "\u1798\u17B7\u1793\u17A2\u17B6\u1785\u1791\u17B6\u1789\u1799\u1780\u1794\u178E\u17D2\u178E\u17B6\u179B\u17D0\u1799 Supabase \u1794\u17B6\u1793\u1791\u17C1\u17D4 \u179F\u17BC\u1798\u1796\u17B7\u1793\u17B7\u178F\u17D2\u1799\u17A2\u17CA\u17B8\u1793\u1792\u17BA\u178E\u17B7\u178F\u17D4",
+    "sync.err.login": "\u17A2\u17CA\u17B8\u1798\u17C2\u179B \u17AC\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D4",
+    "sync.err.notConfirmed": "\u179F\u17BC\u1798\u1794\u1789\u17D2\u1787\u17B6\u1780\u17CB\u17A2\u17CA\u17B8\u1798\u17C2\u179B\u1787\u17B6\u1798\u17BB\u1793\u179F\u17B7\u1793 (\u1796\u17B7\u1793\u17B7\u178F\u17D2\u1799\u1794\u17D2\u179A\u17A2\u1794\u17CB\u179F\u17C6\u1794\u17BB\u178F\u17D2\u179A) \u179A\u17BD\u1785\u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u17D4",
+    "sync.err.exists": "\u17A2\u17CA\u17B8\u1798\u17C2\u179B\u1793\u17C1\u17C7\u1798\u17B6\u1793\u1782\u178E\u1793\u17B8\u179A\u17BD\u1785\u17A0\u17BE\u1799\u17D4 \u179F\u17BC\u1798\u1787\u17D2\u179A\u17BE\u179F \u1785\u17BC\u179B\u1782\u178E\u1793\u17B8\u17D4",
+    "sync.err.password": "\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB\u178F\u17D2\u179A\u17BC\u179C\u1798\u17B6\u1793\u1799\u17C9\u17B6\u1784\u178F\u17B7\u1785 \u17E6 \u178F\u17BD\u17D4",
+    "sync.err.email": "\u179F\u17BC\u1798\u1794\u1789\u17D2\u1785\u17BC\u179B\u17A2\u17CA\u17B8\u1798\u17C2\u179B\u17B1\u17D2\u1799\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D4",
+    "sync.err.key": "Supabase \u1798\u17B7\u1793\u1791\u1791\u17BD\u179B\u1799\u1780 key \u1793\u17C1\u17C7\u1791\u17C1\u17D4 \u179F\u17BC\u1798\u1785\u1798\u17D2\u179B\u1784 publishable (anon) key \u1798\u17D2\u178F\u1784\u1791\u17C0\u178F\u17D4",
+    "sync.err.network": "\u1798\u17B7\u1793\u17A2\u17B6\u1785\u1797\u17D2\u1787\u17B6\u1794\u17CB\u1791\u17C5 Supabase \u1794\u17B6\u1793\u1791\u17C1\u17D4 \u179F\u17BC\u1798\u1796\u17B7\u1793\u17B7\u178F\u17D2\u1799\u17A2\u17CA\u17B8\u1793\u1792\u17BA\u178E\u17B7\u178F\u17D4",
     "common.ok": "\u1799\u179B\u17CB\u17A0\u17BE\u1799",
     "settings.photoAdd": "\u1794\u1793\u17D2\u1790\u17C2\u1798\u179A\u17BC\u1794\u1790\u178F",
     "settings.photoChange": "\u1794\u17D2\u178F\u17BC\u179A\u179A\u17BC\u1794\u1790\u178F",
@@ -2721,8 +2882,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
   }
   function formatDateTime(local) {
     if (!local) return "";
-    const [key, time] = local.split("T");
-    return `${relativeDay(key)} \xB7 ${formatTime(time)}`;
+    const [key, time2] = local.split("T");
+    return `${relativeDay(key)} \xB7 ${formatTime(time2)}`;
   }
   function timeAgo(iso) {
     const diff = (new Date(iso).getTime() - Date.now()) / 1e3;
@@ -2974,10 +3135,37 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
   function onSaveError(fn) {
     errorListeners.add(fn);
   }
-  function commit(mutate) {
+  var COLLECTIONS = ["tasks", "notes", "categories", "reminders"];
+  var localChangeListeners = /* @__PURE__ */ new Set();
+  var onLocalChange = (fn) => localChangeListeners.add(fn);
+  function fingerprint(s) {
+    const f = { prefs: JSON.stringify([s.profile, s.settings]) };
+    for (const c of COLLECTIONS) f[c] = new Map(s[c].map((it) => [it.id, JSON.stringify(it)]));
+    return f;
+  }
+  function stampChanges(before) {
+    const now2 = nowIso2();
+    const deleted = state.meta.deleted || (state.meta.deleted = {});
+    for (const c of COLLECTIONS) {
+      const seen = /* @__PURE__ */ new Set();
+      for (const it of state[c]) {
+        seen.add(it.id);
+        if (before[c].get(it.id) !== JSON.stringify(it)) {
+          it.updatedAt = now2;
+          delete deleted[it.id];
+        }
+      }
+      for (const id of before[c].keys()) if (!seen.has(id)) deleted[id] = now2;
+    }
+    if (JSON.stringify([state.profile, state.settings]) !== before.prefs) state.meta.prefsUpdatedAt = now2;
+  }
+  function commit(mutate, { track = true } = {}) {
+    const before = track ? fingerprint(state) : null;
     mutate(state);
+    if (before) stampChanges(before);
     state.meta.updatedAt = nowIso2();
     listeners.forEach((fn) => fn(state));
+    if (track) localChangeListeners.forEach((fn) => fn());
     clearTimeout(saveTimer);
     saveTimer = setTimeout(persistNow, 250);
   }
@@ -3002,6 +3190,12 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     const d = /* @__PURE__ */ new Date(`${task.dueDate}T${task.dueTime || "09:00"}`);
     d.setMinutes(d.getMinutes() - offset);
     return toLocalDateTime(d);
+  }
+  function applySynced(merged) {
+    commit((s) => {
+      for (const k of Object.keys(s)) delete s[k];
+      Object.assign(s, merged);
+    }, { track: false });
   }
   var actions = {
     /* ---------------- Tasks ---------------- */
@@ -3622,6 +3816,14 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
     repeat: '<path d="M17 2.5 20.5 6 17 9.5"/><path d="M3.5 11V9a3 3 0 0 1 3-3h14M7 21.5 3.5 18 7 14.5"/><path d="M20.5 13v2a3 3 0 0 1-3 3h-14"/>',
     logo: '<path d="M4 15.5c2.2 0 2.6-7 4.6-7s2.4 9 4.6 9 2.6-11 4.8-11"/><circle cx="20" cy="6.5" r="1.6" fill="currentColor" stroke="none"/>',
+    cloud: '<path d="M17.5 19a4.5 4.5 0 1 0-1.3-8.8A6.5 6.5 0 0 0 4 12.5 3.5 3.5 0 0 0 6.5 19z"/>',
+    cloudCheck: '<path d="M17.5 19a4.5 4.5 0 1 0-1.3-8.8A6.5 6.5 0 0 0 4 12.5 3.5 3.5 0 0 0 6.5 19z"/><path d="m9.5 14.5 2 2 3.5-4"/>',
+    cloudOff: '<path d="M3 3l18 18"/><path d="M8.5 6.4A6.5 6.5 0 0 1 16.2 10.2a4.5 4.5 0 0 1 4.2 6.4M17 19H6.5A3.5 3.5 0 0 1 4 12.5a6.4 6.4 0 0 1 1.5-3.6"/>',
+    refresh: '<path d="M20 11a8 8 0 0 0-14.6-4.5L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.6 4.5L20 16"/><path d="M20 21v-5h-5"/>',
+    logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+    link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
     keyboard: '<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M6.5 9.5h.01M10 9.5h.01M13.5 9.5h.01M17 9.5h.01M7.5 14.5h9"/>'
   };
   function icon(name, { size = 18, cls = "", label = "" } = {}) {
@@ -4816,6 +5018,568 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
   }
   registerActions({ "install-app": () => installApp() });
 
+  // js/core/syncMerge.js
+  var COLLECTIONS2 = ["tasks", "notes", "categories", "reminders"];
+  var TOMBSTONE_DAYS = 90;
+  var time = (iso) => iso ? new Date(iso).getTime() || 0 : 0;
+  var stamp = (item) => time(item.updatedAt || item.createdAt);
+  function mergeDeleted(a = {}, b = {}) {
+    const out = { ...a };
+    for (const [id, when] of Object.entries(b)) if (!out[id] || time(when) > time(out[id])) out[id] = when;
+    const cutoff = Date.now() - TOMBSTONE_DAYS * 864e5;
+    for (const [id, when] of Object.entries(out)) if (time(when) < cutoff) delete out[id];
+    return out;
+  }
+  function mergeList(localList, remoteList, deleted) {
+    const remoteById = new Map(remoteList.map((it) => [it.id, it]));
+    const out = [];
+    const used = /* @__PURE__ */ new Set();
+    for (const item of localList) {
+      const other = remoteById.get(item.id);
+      out.push(other && stamp(other) > stamp(item) ? other : item);
+      used.add(item.id);
+    }
+    for (const item of remoteList) if (!used.has(item.id)) out.push(item);
+    return out.filter((item) => !(deleted[item.id] && time(deleted[item.id]) >= stamp(item)));
+  }
+  function mergeStates(local, remoteRaw) {
+    if (!remoteRaw) return local;
+    const remote = migrate(remoteRaw);
+    const deleted = mergeDeleted(local.meta.deleted, remote.meta.deleted);
+    const remotePrefsNewer = time(remote.meta.prefsUpdatedAt) > time(local.meta.prefsUpdatedAt);
+    const merged = {
+      ...local,
+      meta: {
+        ...local.meta,
+        deleted,
+        sample: false,
+        prefsUpdatedAt: remotePrefsNewer ? remote.meta.prefsUpdatedAt : local.meta.prefsUpdatedAt
+      },
+      profile: remotePrefsNewer ? remote.profile : local.profile,
+      settings: remotePrefsNewer ? remote.settings : local.settings
+    };
+    for (const c of COLLECTIONS2) merged[c] = mergeList(local[c], remote[c], deleted);
+    return merged;
+  }
+  function signature(s) {
+    const sortById = (list) => [...list].sort((a, b) => a.id < b.id ? -1 : 1);
+    return JSON.stringify([
+      COLLECTIONS2.map((c) => sortById(s[c])),
+      s.profile,
+      s.settings,
+      s.meta.prefsUpdatedAt,
+      Object.keys(s.meta.deleted || {}).sort()
+    ]);
+  }
+
+  // js/features/sync.js
+  var CONFIG_KEY = "tempo:sync:v1";
+  var SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
+  var TABLE = "tempo_data";
+  var PUSH_DELAY_MS = 2500;
+  var POLL_MS = 6e4;
+  var MAX_ATTEMPTS = 4;
+  var SETUP_SQL = `-- Tempo cloud sync: run once in Supabase \u2192 SQL Editor
+create table if not exists public.tempo_data (
+  user_id uuid primary key default auth.uid() references auth.users(id) on delete cascade,
+  data jsonb not null,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.tempo_data enable row level security;
+
+create policy "tempo: read own row" on public.tempo_data
+  for select using (auth.uid() = user_id);
+create policy "tempo: insert own row" on public.tempo_data
+  for insert with check (auth.uid() = user_id);
+create policy "tempo: update own row" on public.tempo_data
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "tempo: delete own row" on public.tempo_data
+  for delete using (auth.uid() = user_id);`;
+  var info = {
+    configured: false,
+    url: "",
+    user: null,
+    // { id, email }
+    status: "off",
+    // off | signed-out | syncing | synced | offline | error
+    lastSyncAt: null,
+    error: "",
+    auto: true
+  };
+  var config = null;
+  var client = null;
+  var running = null;
+  var pending = false;
+  var pushTimer = null;
+  var listeners5 = /* @__PURE__ */ new Set();
+  var getSyncInfo = () => ({ ...info });
+  var onSyncChange = (fn) => listeners5.add(fn);
+  function set(patch) {
+    Object.assign(info, patch);
+    listeners5.forEach((fn) => fn(getSyncInfo()));
+  }
+  function readConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+  function writeConfig(c) {
+    try {
+      if (c) localStorage.setItem(CONFIG_KEY, JSON.stringify(c));
+      else localStorage.removeItem(CONFIG_KEY);
+    } catch {
+    }
+  }
+  function normalizeUrl(raw) {
+    let u = String(raw || "").trim().replace(/\/+$/, "");
+    if (u && !/^https?:\/\//.test(u)) u = `https://${u}`;
+    return u.replace(/\/(rest|auth)\/v1.*$/, "");
+  }
+  function loadSdk() {
+    if (window.supabase?.createClient) return Promise.resolve(window.supabase);
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = SDK_URL;
+      s.async = true;
+      const timer = setTimeout(() => reject(new Error("sdk-timeout")), 2e4);
+      s.onload = () => {
+        clearTimeout(timer);
+        window.supabase?.createClient ? resolve(window.supabase) : reject(new Error("sdk-missing"));
+      };
+      s.onerror = () => {
+        clearTimeout(timer);
+        s.remove();
+        reject(new Error("sdk-load"));
+      };
+      document.head.appendChild(s);
+    });
+  }
+  async function makeClient(url, key) {
+    const sdk = await loadSdk();
+    return sdk.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "tempo-auth" }
+    });
+  }
+  async function connect(url, key) {
+    const cleanUrl = normalizeUrl(url);
+    const cleanKey = String(key || "").trim();
+    if (!/^https:\/\/.+/.test(cleanUrl) || cleanKey.length < 20) throw new Error("bad-config");
+    const c = await makeClient(cleanUrl, cleanKey);
+    const { error } = await c.from(TABLE).select("version").limit(1);
+    if (error) throw new Error(/relation|does not exist|schema cache/i.test(error.message) ? "no-table" : error.message);
+    config = { url: cleanUrl, key: cleanKey, auto: true };
+    writeConfig(config);
+    client = c;
+    attachAuthListener();
+    set({ configured: true, url: cleanUrl, status: "signed-out", error: "", auto: true });
+  }
+  async function signIn(email, password) {
+    const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) throw error;
+    set({ user: { id: data.user.id, email: data.user.email }, error: "" });
+    return syncNow();
+  }
+  async function signUp(email, password) {
+    const redirect = window.location.href.split("#")[0];
+    const { data, error } = await client.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirect } });
+    if (error) throw error;
+    if (!data.session) return "confirm-email";
+    set({ user: { id: data.user.id, email: data.user.email }, error: "" });
+    await syncNow();
+    return "signed-in";
+  }
+  async function signOut() {
+    try {
+      await client?.auth.signOut();
+    } catch {
+    }
+    set({ user: null, status: info.configured ? "signed-out" : "off", lastSyncAt: null });
+  }
+  async function disconnect() {
+    await signOut();
+    writeConfig(null);
+    config = null;
+    client = null;
+    set({ configured: false, url: "", status: "off", error: "" });
+  }
+  function setAutoSync(on) {
+    if (!config) return;
+    config.auto = on;
+    writeConfig(config);
+    set({ auto: on });
+  }
+  async function syncOnce() {
+    const uid2 = info.user.id;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const { data: rows, error } = await client.from(TABLE).select("data,version").eq("user_id", uid2).limit(1);
+      if (error) throw error;
+      const row2 = rows?.[0] || null;
+      const local = getState();
+      const merged = row2 ? mergeStates(local, row2.data) : local;
+      if (signature(merged) !== signature(local)) applySynced(merged);
+      const toSave = getState();
+      if (!row2) {
+        const { error: insErr } = await client.from(TABLE).insert({ user_id: uid2, data: toSave, version: 1 });
+        if (!insErr) return;
+        if (insErr.code === "23505") continue;
+        throw insErr;
+      }
+      if (signature(toSave) === signature(migrate(row2.data))) return;
+      const { data: updated, error: updErr } = await client.from(TABLE).update({ data: toSave, version: row2.version + 1, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("user_id", uid2).eq("version", row2.version).select("version");
+      if (updErr) throw updErr;
+      if (updated?.length) return;
+    }
+    throw new Error("conflict");
+  }
+  function syncNow() {
+    if (!client || !info.user) return Promise.resolve();
+    if (running) {
+      pending = true;
+      return running;
+    }
+    if (!navigator.onLine) {
+      set({ status: "offline" });
+      return Promise.resolve();
+    }
+    clearTimeout(pushTimer);
+    set({ status: "syncing", error: "" });
+    running = syncOnce().then(() => set({ status: "synced", lastSyncAt: (/* @__PURE__ */ new Date()).toISOString(), error: "" })).catch((err) => {
+      console.warn("[sync]", err);
+      const offline = !navigator.onLine || /fetch|network/i.test(err?.message || "");
+      set({ status: offline ? "offline" : "error", error: offline ? "" : err?.message || String(err) });
+    }).finally(() => {
+      running = null;
+      if (pending) {
+        pending = false;
+        schedulePush(300);
+      }
+    });
+    return running;
+  }
+  function schedulePush(delay = PUSH_DELAY_MS) {
+    if (!client || !info.user || !info.auto) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(syncNow, delay);
+  }
+  function attachAuthListener() {
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        set({ user: null, status: "signed-out" });
+        return;
+      }
+      if (session?.user && (!info.user || info.user.id !== session.user.id)) {
+        set({ user: { id: session.user.id, email: session.user.email } });
+        setTimeout(syncNow, 0);
+      }
+    });
+  }
+  async function initSync() {
+    onLocalChange(() => schedulePush());
+    window.addEventListener("online", () => syncNow());
+    window.addEventListener("offline", () => info.user && set({ status: "offline" }));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        if (pushTimer) syncNow();
+        return;
+      }
+      const since = Date.now() - new Date(info.lastSyncAt || 0).getTime();
+      if (since > 15e3) syncNow();
+    });
+    setInterval(() => {
+      if (!document.hidden && info.auto) syncNow();
+    }, POLL_MS);
+    await startClient();
+  }
+  async function startClient() {
+    config = readConfig();
+    if (!config?.url || !config?.key) return;
+    set({ configured: true, url: config.url, auto: config.auto !== false, status: "signed-out" });
+    try {
+      client = await makeClient(config.url, config.key);
+    } catch {
+      set({ status: "offline" });
+      window.addEventListener("online", () => {
+        if (!client) startClient();
+      }, { once: true });
+      return;
+    }
+    attachAuthListener();
+    const { data } = await client.auth.getSession();
+    if (data?.session?.user) {
+      set({ user: { id: data.session.user.id, email: data.session.user.email } });
+      syncNow();
+    }
+  }
+
+  // js/features/syncUi.js
+  var host = (url) => {
+    try {
+      return new URL(url).host;
+    } catch {
+      return url;
+    }
+  };
+  function statusText(s = getSyncInfo()) {
+    if (s.status === "syncing") return t("sync.status.syncing");
+    if (s.status === "offline") return t("sync.status.offline");
+    if (s.status === "error") return `${t("sync.status.error")} ${s.error}`;
+    if (s.lastSyncAt) return t("sync.status.synced", { when: timeAgo(s.lastSyncAt) });
+    return t("sync.status.waiting");
+  }
+  function syncButtonState() {
+    const s = getSyncInfo();
+    if (!s.configured) return { hidden: true };
+    const map = {
+      synced: ["cloudCheck", "is-ok"],
+      syncing: ["refresh", "is-syncing"],
+      offline: ["cloudOff", "is-off"],
+      error: ["cloud", "is-error"],
+      "signed-out": ["cloud", "is-off"],
+      off: ["cloud", "is-off"]
+    };
+    const [ic, cls] = map[s.status] || map.off;
+    const label = s.user ? statusText(s) : t("sync.signInToSync");
+    return { hidden: false, html: icon(ic), cls, label };
+  }
+  function syncSection() {
+    const s = getSyncInfo();
+    if (!s.configured) {
+      return `<div class="sync-intro">
+      <p>${esc(t("sync.intro"))}</p>
+      <ul class="sync-points">
+        <li>${icon("check", { size: 15 })}${esc(t("sync.point1"))}</li>
+        <li>${icon("check", { size: 15 })}${esc(t("sync.point2"))}</li>
+        <li>${icon("check", { size: 15 })}${esc(t("sync.point3"))}</li>
+      </ul>
+      <button type="button" class="btn btn--primary btn--md" data-action="sync-setup">${icon("cloud", { size: 16 })}<span>${esc(t("sync.setup"))}</span></button>
+    </div>`;
+    }
+    if (!s.user) {
+      return `<div class="sync-card">
+      <div class="sync-card__row">${icon("link", { size: 16 })}<span>${esc(t("sync.connectedTo"))} <strong>${esc(host(s.url))}</strong></span></div>
+      <p class="sync-card__hint">${esc(t("sync.signInHint"))}</p>
+      <div class="sync-card__actions">
+        <button type="button" class="btn btn--primary btn--md" data-action="sync-auth" data-mode="signin">${icon("user", { size: 16 })}<span>${esc(t("sync.signIn"))}</span></button>
+        <button type="button" class="btn btn--secondary btn--md" data-action="sync-auth" data-mode="signup">${esc(t("sync.createAccount"))}</button>
+        <button type="button" class="link-btn link-btn--muted" data-action="sync-disconnect">${esc(t("sync.disconnect"))}</button>
+      </div>
+    </div>`;
+    }
+    return `<div class="sync-card">
+    <div class="sync-card__row sync-card__row--status is-${s.status}">
+      <span class="sync-dot"></span>
+      <div><strong>${esc(s.user.email)}</strong><span>${esc(statusText(s))}</span></div>
+    </div>
+    <div class="sync-card__actions">
+      <button type="button" class="btn btn--primary btn--md" data-action="sync-now" ${s.status === "syncing" ? "disabled" : ""}>${icon("refresh", { size: 16 })}<span>${esc(t("sync.now"))}</span></button>
+      <button type="button" class="btn btn--secondary btn--md" data-action="sync-signout">${icon("logout", { size: 16 })}<span>${esc(t("sync.signOut"))}</span></button>
+    </div>
+    ${toggle({ id: "sync-auto", checked: s.auto, label: t("sync.auto"), desc: t("sync.autoDesc"), change: "sync-auto" })}
+    <p class="sync-card__hint">${icon("link", { size: 13 })} ${esc(host(s.url))} \xB7 <button type="button" class="link-btn link-btn--muted" data-action="sync-disconnect">${esc(t("sync.disconnect"))}</button></p>
+  </div>`;
+  }
+  function errorText(err) {
+    const m = err?.message || String(err);
+    if (m === "bad-config") return t("sync.err.badConfig");
+    if (m === "no-table") return t("sync.err.noTable");
+    if (m.startsWith("sdk")) return t("sync.err.sdk");
+    if (/invalid login/i.test(m)) return t("sync.err.login");
+    if (/email not confirmed/i.test(m)) return t("sync.err.notConfirmed");
+    if (/already registered|already been registered/i.test(m)) return t("sync.err.exists");
+    if (/password/i.test(m) && /6|short|least/i.test(m)) return t("sync.err.password");
+    if (/invalid api key|jwt|apikey/i.test(m)) return t("sync.err.key");
+    if (/fetch|network/i.test(m)) return t("sync.err.network");
+    return m;
+  }
+  function openSetup() {
+    const m = openModal({
+      title: t("sync.setupTitle"),
+      size: "md",
+      body: `<ol class="setup-steps">
+      <li><strong>${esc(t("sync.step1"))}</strong><p>${esc(t("sync.step1Text"))}</p></li>
+      <li><strong>${esc(t("sync.step2"))}</strong><p>${esc(t("sync.step2Text"))}</p>
+        <div class="code-wrap"><pre class="code-block" id="sync-sql">${esc(SETUP_SQL)}</pre>
+        <button type="button" class="btn btn--secondary btn--sm code-wrap__copy" data-copy-sql>${icon("copy", { size: 14 })}<span>${esc(t("common.copy"))}</span></button></div></li>
+      <li><strong>${esc(t("sync.step3"))}</strong><p>${esc(t("sync.step3Text"))}</p>
+        <form class="form" id="sync-form" novalidate>
+          <div class="field"><label class="field__label" for="sync-url">Project URL</label>
+            <input class="input" id="sync-url" type="url" placeholder="https://abcdefgh.supabase.co" autocomplete="off" spellcheck="false" required></div>
+          <div class="field"><label class="field__label" for="sync-key">${esc(t("sync.keyLabel"))}</label>
+            <input class="input" id="sync-key" type="text" placeholder="sb_publishable_\u2026 / eyJhbGciOi\u2026" autocomplete="off" spellcheck="false" required>
+            <p class="field__hint">${esc(t("sync.keyHint"))}</p></div>
+          <p class="field__error" id="sync-error" hidden></p>
+        </form></li>
+      <li><strong>${esc(t("sync.step4"))}</strong><p>${esc(t("sync.step4Text"))}</p></li>
+    </ol>`,
+      footer: `<span class="modal__foot-spacer"></span>
+      <button type="button" class="btn btn--secondary btn--md" data-close>${esc(t("common.cancel"))}</button>
+      <button type="submit" form="sync-form" class="btn btn--primary btn--md" id="sync-connect">${icon("link", { size: 16 })}<span>${esc(t("sync.connect"))}</span></button>`,
+      onMount(root2) {
+        root2.querySelector("[data-copy-sql]").addEventListener("click", () => {
+          const fallback = () => {
+            const range = document.createRange();
+            range.selectNodeContents(root2.querySelector("#sync-sql"));
+            getSelection().removeAllRanges();
+            getSelection().addRange(range);
+            toast(t("toast.selectToCopy"), { icon: "info" });
+          };
+          if (navigator.clipboard?.writeText) navigator.clipboard.writeText(SETUP_SQL).then(() => toast(t("toast.copied"), { icon: "copy", type: "success" }), fallback);
+          else fallback();
+        });
+        const form = root2.querySelector("#sync-form");
+        const btn = root2.querySelector("#sync-connect");
+        const errEl = root2.querySelector("#sync-error");
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errEl.hidden = true;
+          btn.disabled = true;
+          btn.querySelector("span").textContent = t("sync.connecting");
+          try {
+            await connect(form.querySelector("#sync-url").value, form.querySelector("#sync-key").value);
+            m.close(true);
+            toast(t("sync.connected"), { icon: "cloudCheck", type: "success" });
+            openAuth("signup");
+          } catch (err) {
+            errEl.textContent = errorText(err);
+            errEl.hidden = false;
+          } finally {
+            btn.disabled = false;
+            btn.querySelector("span").textContent = t("sync.connect");
+          }
+        });
+      }
+    });
+  }
+  function openAuth(mode = "signin") {
+    let current2 = mode;
+    const m = openModal({
+      title: t("sync.accountTitle"),
+      size: "sm",
+      body: `<div class="segmented auth-tabs" role="tablist">
+        <label class="segmented__opt"><input type="radio" name="auth-mode" value="signin" ${mode === "signin" ? "checked" : ""}><span>${esc(t("sync.signIn"))}</span></label>
+        <label class="segmented__opt"><input type="radio" name="auth-mode" value="signup" ${mode === "signup" ? "checked" : ""}><span>${esc(t("sync.createAccount"))}</span></label>
+      </div>
+      <form class="form" id="auth-form" novalidate>
+        <p class="modal__lead" id="auth-lead"></p>
+        <div class="field"><label class="field__label" for="auth-email">${esc(t("sync.email"))}</label>
+          <input class="input" id="auth-email" type="email" autocomplete="email" required autofocus></div>
+        <div class="field"><label class="field__label" for="auth-pass">${esc(t("sync.password"))}</label>
+          <input class="input" id="auth-pass" type="password" minlength="6" required></div>
+        <p class="field__error" id="auth-error" hidden></p>
+        <p class="auth-note" id="auth-note" hidden></p>
+      </form>`,
+      footer: `<span class="modal__foot-spacer"></span>
+      <button type="button" class="btn btn--secondary btn--md" data-close>${esc(t("common.cancel"))}</button>
+      <button type="submit" form="auth-form" class="btn btn--primary btn--md" id="auth-go"><span></span></button>`,
+      onMount(root2) {
+        const form = root2.querySelector("#auth-form");
+        const go = root2.querySelector("#auth-go span");
+        const lead = root2.querySelector("#auth-lead");
+        const pass = root2.querySelector("#auth-pass");
+        const errEl = root2.querySelector("#auth-error");
+        const note = root2.querySelector("#auth-note");
+        const paint = () => {
+          go.textContent = current2 === "signin" ? t("sync.signIn") : t("sync.createAccount");
+          lead.textContent = current2 === "signin" ? t("sync.signInLead") : t("sync.signUpLead");
+          pass.autocomplete = current2 === "signin" ? "current-password" : "new-password";
+        };
+        paint();
+        root2.querySelectorAll('input[name="auth-mode"]').forEach((r) => r.addEventListener("change", () => {
+          current2 = r.value;
+          errEl.hidden = true;
+          note.hidden = true;
+          paint();
+        }));
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errEl.hidden = true;
+          note.hidden = true;
+          const email = root2.querySelector("#auth-email").value;
+          if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+            errEl.textContent = t("sync.err.email");
+            errEl.hidden = false;
+            return;
+          }
+          if (pass.value.length < 6) {
+            errEl.textContent = t("sync.err.password");
+            errEl.hidden = false;
+            return;
+          }
+          const btn = root2.querySelector("#auth-go");
+          btn.disabled = true;
+          go.textContent = t("sync.working");
+          try {
+            if (current2 === "signin") {
+              await signIn(email, pass.value);
+              m.close(true);
+              toast(t("sync.signedIn"), { icon: "cloudCheck", type: "success" });
+            } else {
+              const result = await signUp(email, pass.value);
+              if (result === "confirm-email") {
+                note.textContent = t("sync.confirmEmail", { email: email.trim() });
+                note.hidden = false;
+                current2 = "signin";
+                root2.querySelector('input[value="signin"]').checked = true;
+              } else {
+                m.close(true);
+                toast(t("sync.signedIn"), { icon: "cloudCheck", type: "success" });
+              }
+            }
+          } catch (err) {
+            errEl.textContent = errorText(err);
+            errEl.hidden = false;
+          } finally {
+            btn.disabled = false;
+            paint();
+          }
+        });
+      }
+    });
+  }
+  registerActions({
+    "sync-setup": () => openSetup(),
+    "sync-auth": (el2) => openAuth(el2.dataset.mode || "signin"),
+    "sync-now": async () => {
+      await syncNow();
+      const s = getSyncInfo();
+      if (s.status === "synced") toast(t("sync.done"), { icon: "cloudCheck", type: "success" });
+      else if (s.status === "error") toast(errorText({ message: s.error }), { icon: "alert", type: "error", title: t("sync.status.error") });
+      else if (s.status === "offline") toast(t("sync.status.offline"), { icon: "cloudOff" });
+    },
+    "sync-header": () => {
+      const s = getSyncInfo();
+      if (!s.user) {
+        openAuth("signin");
+        return;
+      }
+      syncNow().then(() => {
+        const after = getSyncInfo();
+        toast(after.status === "synced" ? t("sync.done") : statusText(after), { icon: after.status === "synced" ? "cloudCheck" : "cloudOff" });
+      });
+    },
+    "sync-signout": async () => {
+      const ok = await confirmDialog({ title: t("sync.signOutTitle"), message: t("sync.signOutText"), confirmLabel: t("sync.signOut"), danger: false, emoji: "\u2601\uFE0F" });
+      if (!ok) return;
+      await signOut();
+      toast(t("sync.signedOut"), { icon: "logout" });
+    },
+    "sync-disconnect": async () => {
+      const ok = await confirmDialog({ title: t("sync.disconnectTitle"), message: t("sync.disconnectText"), confirmLabel: t("sync.disconnect"), danger: false, emoji: "\u{1F50C}" });
+      if (!ok) return;
+      await disconnect();
+      toast(t("sync.disconnected"), { icon: "cloudOff" });
+    },
+    "go-sync-settings": () => {
+      navigate("settings");
+      setTimeout(() => document.getElementById("settings-sync")?.scrollIntoView({ behavior: "smooth", block: "start" }), 250);
+    }
+  });
+  registerChange({ "sync-auto": (el2) => setAutoSync(el2.checked) });
+
   // js/layout/shell.js
   var NAV = [
     { route: "dashboard", icon: "home", key: "nav.dashboard" },
@@ -4850,6 +5614,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
           ${icon("search", { size: 17 })}<span class="search-trigger__text">${esc(t("search.trigger"))}</span><kbd class="search-trigger__kbd" id="search-kbd">Ctrl K</kbd>
         </button>
         <div class="topbar__actions">
+          <button type="button" class="icon-btn sync-btn" id="sync-btn" data-action="sync-header" hidden></button>
           <button type="button" class="icon-btn install-btn" id="install-btn" data-action="install-app" hidden aria-label="${esc(t("install.button"))}" title="${esc(t("install.button"))}">${icon("download")}</button>
           <button type="button" class="icon-btn topbar__search-mobile" data-action="open-search" aria-label="${esc(t("search.title"))}">${icon("search")}</button>
           <button type="button" class="icon-btn has-badge" id="bell-btn" data-action="open-notifications" aria-haspopup="true" aria-expanded="false" aria-label="${esc(t("notifications.title"))}">${icon("bell")}<span class="dot-badge" hidden></span></button>
@@ -4905,6 +5670,15 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     document.getElementById("theme-btn").innerHTML = icon(theme === "dark" ? "sun" : "moon");
     document.getElementById("theme-btn").setAttribute("aria-label", theme === "dark" ? t("theme.switchLight") : t("theme.switchDark"));
     document.getElementById("avatar-btn").innerHTML = avatar(state2.profile.name, 34, state2.profile.photo);
+    const sb = syncButtonState();
+    const syncBtn = document.getElementById("sync-btn");
+    syncBtn.hidden = sb.hidden;
+    if (!sb.hidden) {
+      syncBtn.innerHTML = sb.html;
+      syncBtn.className = `icon-btn sync-btn ${sb.cls}`;
+      syncBtn.setAttribute("aria-label", sb.label);
+      syncBtn.title = sb.label;
+    }
     document.getElementById("install-btn").hidden = installStatus() !== "available";
     const unseen = state2.reminders.filter((r) => r.fired && !r.seen).length;
     document.querySelector("#bell-btn .dot-badge").hidden = !unseen;
@@ -5843,6 +6617,7 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       ["settings-notifications", "bell", "settings.notifications"],
       ["settings-tasks", "tasks", "settings.taskDefaults"],
       ["settings-language", "globe", "settings.language"],
+      ["settings-sync", "cloud", "sync.title"],
       ["settings-app", "download", "settings.app"],
       ["settings-data", "database", "settings.data"]
     ].map(([id, ic, key]) => `<a href="#settings" data-action="settings-jump" data-target="${id}" class="settings-nav__item">${icon(ic, { size: 16 })}${esc(t(key))}</a>`).join("")}
@@ -5915,6 +6690,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
       options: [{ value: "en", label: "English" }, { value: "km", label: "\u1781\u17D2\u1798\u17C2\u179A" }]
     }))}
       `)}
+
+      ${section("settings-sync", "cloud", t("sync.title"), t("sync.desc"), syncSection())}
 
       ${section("settings-app", "download", t("settings.app"), t("settings.appDesc"), (() => {
       const st = installStatus();
@@ -6460,6 +7237,8 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     });
     watchSystemTheme(requestRender);
     onInstallChange(requestRender);
+    onSyncChange(requestRender);
+    initSync().catch((err) => console.warn("[sync] start failed", err));
     if (sampleWasRemoved()) setTimeout(() => toast(t("toast.sampleRemoved"), { icon: "sparkle", duration: 6e3 }), 600);
     onSaveError(() => toast(t("toast.saveFailed"), { icon: "alert", type: "error", duration: 8e3 }));
     initSwipe();
