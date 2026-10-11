@@ -13,6 +13,7 @@
     window.TEMPO_CLOUD = {
       url: 'https://nanqarhajxoiyxhfadrg.supabase.co',   // e.g. 'https://abcdefghijkl.supabase.co'
       key: 'sb_publishable_nuKyGTRX8j0vDo0alSYlOg_2dzy0I9U',   // e.g. 'sb_publishable_...'  (or the long anon public key 'eyJ...')
+      google: true,   // true after you enable Google in Supabase → Authentication → Sign In / Providers
     };
   </script>
 
@@ -1312,6 +1313,16 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 .welcome__title { font-size: var(--text-xl); }
 .welcome__text { color: var(--text-secondary); max-width: 34ch; margin-bottom: 6px; }
 
+/* Google sign-in button (follows Google's light button style) */
+.google-btn {
+  width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: #fff; color: #1f1f1f;
+  font-weight: 600; font-size: var(--text-sm); transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.google-btn:hover:not(:disabled) { background: #f7f8f8; box-shadow: var(--shadow-sm); }
+.or-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: var(--text-tertiary); font-size: var(--text-xs); }
+.or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
 /* ==========================================================================
    PAGES — layouts specific to each screen.
    Dashboard → js/pages/dashboard.js   Tasks → js/pages/tasks.js
@@ -2079,6 +2090,10 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
 
   // js/core/i18n.js
   var en = {
+    "sync.google": "Continue with Google",
+    "sync.orEmail": "or use email",
+    "sync.googleRedirect": "Opening Google\u2026",
+    "sync.err.googleOff": "Google sign-in is not switched on in Supabase yet (Authentication \u2192 Sign In / Providers \u2192 Google).",
     "sync.guestInfo": "You are using Tempo without an account. Your data is saved only on this device.",
     "sync.forgot": "Forgot password?",
     "sync.err.emailFirst": 'Type your email above first, then tap "Forgot password?".',
@@ -2587,6 +2602,10 @@ body:has(.quick[data-open="true"]) .toast-region { opacity: 0; pointer-events: n
     "error.reload": "Reload"
   };
   var km = {
+    "sync.google": "\u1794\u1793\u17D2\u178F\u1787\u17B6\u1798\u17BD\u1799 Google",
+    "sync.orEmail": "\u17AC\u1794\u17D2\u179A\u17BE\u17A2\u17CA\u17B8\u1798\u17C2\u179B",
+    "sync.googleRedirect": "\u1780\u17C6\u1796\u17BB\u1784\u1794\u17BE\u1780 Google\u2026",
+    "sync.err.googleOff": "\u1780\u17B6\u179A\u1785\u17BC\u179B\u178A\u17C4\u1799 Google \u1798\u17B7\u1793\u1791\u17B6\u1793\u17CB\u1794\u17B6\u1793\u1794\u17BE\u1780\u1780\u17D2\u1793\u17BB\u1784 Supabase \u1793\u17C5\u17A1\u17BE\u1799\u1791\u17C1 (Authentication \u2192 Sign In / Providers \u2192 Google)\u17D4",
     "sync.guestInfo": "\u17A2\u17D2\u1793\u1780\u1780\u17C6\u1796\u17BB\u1784\u1794\u17D2\u179A\u17BE Tempo \u178A\u17C4\u1799\u1782\u17D2\u1798\u17B6\u1793\u1782\u178E\u1793\u17B8\u17D4 \u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u178F\u17D2\u179A\u17BC\u179C\u1794\u17B6\u1793\u179A\u1780\u17D2\u179F\u17B6\u1791\u17BB\u1780\u178F\u17C2\u179B\u17BE\u17A7\u1794\u1780\u179A\u178E\u17CD\u1793\u17C1\u17C7\u1794\u17C9\u17BB\u178E\u17D2\u178E\u17C4\u17C7\u17D4",
     "sync.forgot": "\u1797\u17D2\u179B\u17C1\u1785\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB?",
     "sync.err.emailFirst": '\u179F\u17BC\u1798\u179C\u17B6\u1799\u17A2\u17CA\u17B8\u1798\u17C2\u179B\u179A\u1794\u179F\u17CB\u17A2\u17D2\u1793\u1780\u1781\u17B6\u1784\u179B\u17BE\u1787\u17B6\u1798\u17BB\u1793\u179F\u17B7\u1793 \u179A\u17BD\u1785\u1785\u17BB\u1785 "\u1797\u17D2\u179B\u17C1\u1785\u1796\u17B6\u1780\u17D2\u1799\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB?"\u17D4',
@@ -5207,12 +5226,14 @@ create policy "tempo: delete own row" on public.tempo_data
     auto: true,
     builtIn: false,
     // true when the project is set in index.html (window.TEMPO_CLOUD)
-    recovery: false
+    recovery: false,
     // true after opening a "reset password" email link
+    google: false
+    // show "Continue with Google" (window.TEMPO_CLOUD.google = true)
   };
   function builtInConfig() {
     const c = window.TEMPO_CLOUD;
-    return c && typeof c.url === "string" && c.url.trim() && typeof c.key === "string" && c.key.trim().length > 20 ? { url: normalizeUrl(c.url), key: c.key.trim() } : null;
+    return c && typeof c.url === "string" && c.url.trim() && typeof c.key === "string" && c.key.trim().length > 20 ? { url: normalizeUrl(c.url), key: c.key.trim(), google: c.google === true } : null;
   }
   var cloudAvailable = () => Boolean(builtInConfig() || readConfig()?.url);
   var config = null;
@@ -5314,6 +5335,13 @@ create policy "tempo: delete own row" on public.tempo_data
     if (error) throw error;
     adoptUser(data.user);
     return syncNow();
+  }
+  async function signInWithGoogle() {
+    await readyPromise;
+    if (!client) throw new Error("sdk-load");
+    const redirectTo = window.location.href.split("#")[0];
+    const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+    if (error) throw error;
   }
   async function signUp(email, password) {
     await readyPromise;
@@ -5456,7 +5484,7 @@ create policy "tempo: delete own row" on public.tempo_data
   async function startClient() {
     config = readConfig();
     if (!config?.url || !config?.key) return;
-    set({ configured: true, url: config.url, auto: config.auto !== false, builtIn: Boolean(config.builtIn), status: "signed-out" });
+    set({ configured: true, url: config.url, auto: config.auto !== false, builtIn: Boolean(config.builtIn), google: Boolean(config.google), status: "signed-out" });
     try {
       client = await makeClient(config.url, config.key);
     } catch {
@@ -5619,7 +5647,11 @@ create policy "tempo: delete own row" on public.tempo_data
     const m = openModal({
       title: t("sync.accountTitle"),
       size: "sm",
-      body: `<div class="segmented auth-tabs" role="tablist">
+      body: `${getSyncInfo().google ? `<button type="button" class="google-btn" id="auth-google">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+        <span>${esc(t("sync.google"))}</span></button>
+      <div class="or-divider"><span>${esc(t("sync.orEmail"))}</span></div>` : ""}
+      <div class="segmented auth-tabs" role="tablist">
         <label class="segmented__opt"><input type="radio" name="auth-mode" value="signin" ${mode === "signin" ? "checked" : ""}><span>${esc(t("sync.signIn"))}</span></label>
         <label class="segmented__opt"><input type="radio" name="auth-mode" value="signup" ${mode === "signup" ? "checked" : ""}><span>${esc(t("sync.createAccount"))}</span></label>
       </div>
@@ -5650,6 +5682,19 @@ create policy "tempo: delete own row" on public.tempo_data
           pass.autocomplete = current2 === "signin" ? "current-password" : "new-password";
           root2.querySelector("#auth-forgot").hidden = current2 !== "signin";
         };
+        root2.querySelector("#auth-google")?.addEventListener("click", async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.querySelector("span").textContent = t("sync.googleRedirect");
+          try {
+            await signInWithGoogle();
+          } catch (err) {
+            btn.disabled = false;
+            btn.querySelector("span").textContent = t("sync.google");
+            errEl.textContent = /provider is not enabled|unsupported provider/i.test(err?.message || "") ? t("sync.err.googleOff") : errorText(err);
+            errEl.hidden = false;
+          }
+        });
         root2.querySelector("#auth-forgot").addEventListener("click", async () => {
           errEl.hidden = true;
           note.hidden = true;
